@@ -188,12 +188,69 @@
     </div>
     <div class="toast" id="toast"></div>
 
+    <!-- 提示音音频 -->
+    <audio id="updateSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         let currentAnimeId = null;
         let currentAnimeUpdateTime = null;
+        let previousDataState = null; // 用于比对更新
 
         const dayMapNames = { 'monday': '周一', 'tuesday': '周二', 'wednesday': '周三', 'thursday': '周四', 'friday': '周五', 'saturday': '周六', 'sunday': '周日', 'recent': '近期上映' };
         const currentDayMapping = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
+
+        // 检查数据是否有新更新
+        function checkForUpdates(newData) {
+            if (!previousDataState) {
+                previousDataState = JSON.parse(JSON.stringify(newData));
+                return;
+            }
+
+            let updatesFound = [];
+            Object.keys(newData).forEach(day => {
+                newData[day].forEach(item => {
+                    if (item.subtitleUpdates) {
+                        // 在旧数据中找对应的项
+                        const oldDayData = previousDataState[day] || [];
+                        const oldItem = oldDayData.find(old => old.title === item.title);
+                        
+                        // 如果是新出现的更新，或者更新时间变了
+                        if (!oldItem || !oldItem.subtitleUpdates || oldItem.subtitleUpdates.updateTime !== item.subtitleUpdates.updateTime) {
+                            updatesFound.push(item);
+                        }
+                    }
+                });
+            });
+
+            if (updatesFound.length > 0) {
+                triggerUpdateAlert(updatesFound);
+            }
+            previousDataState = JSON.parse(JSON.stringify(newData));
+        }
+
+        // 触发提示
+        function triggerUpdateAlert(updates) {
+            // 播放提示音
+            const sound = document.getElementById('updateSound');
+            if (sound) sound.play().catch(e => console.log("音频播放被拦截，请先与页面交互"));
+
+            // 显示弹窗提示
+            updates.forEach(item => {
+                const msg = `【新更新】${item.title} - ${item.subtitleUpdates.updateTime}`;
+                showNotification(msg);
+            });
+        }
+
+        function showNotification(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            t.style.background = 'linear-gradient(135deg, #4caf50, #81c784)';
+            t.style.color = '#fff';
+            setTimeout(() => t.style.display = 'none', 5000);
+        }
 
         function getCurrentDayKey() {
             const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
@@ -234,6 +291,7 @@
                 const res = await fetch('/api/schedule');
                 const result = await res.json();
                 if (result.success) {
+                    checkForUpdates(result.data); // 调用更新检测
                     renderData(result.data);
                     document.getElementById('lastSync').innerText = `最后同步: ${new Date().toLocaleTimeString()}`;
                 }

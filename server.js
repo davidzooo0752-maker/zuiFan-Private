@@ -43,9 +43,12 @@ const fuzzyMatch = (str1, str2) => {
     return false;
 };
 
-app.get('/api/schedule', async (req, res) => {
+let cachedData = null;
+let lastScrapeTime = 0;
+
+async function scrapeAll() {
     try {
-        // Fetch Homepage and Classic (Latest) from Mikan to be "tight"
+        console.log("Starting background scrape...");
         const [anibkRes, mikanRes, mikanClassicRes] = await Promise.all([
             axios.get('https://www.anibk.com/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
             axios.get('https://mikanime.tv/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
@@ -54,22 +57,17 @@ app.get('/api/schedule', async (req, res) => {
 
         const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'recent'];
         const data = {};
-        const allMikanItems = []; // Pool for matching
-        
+        const allMikanItems = [];
         dayKeys.forEach(k => data[k] = []);
 
-        // 1. Process Mikan Homepage Schedule
         if (mikanRes && mikanRes.data) {
             const $mikan = cheerio.load(mikanRes.data);
             let currentDayKey = 'unknown';
-            
-            // Mikan homepage structure is a mix of #data-row-N headers and .an-box content
             $mikan('.sk-bangumi').children().each((i, el) => {
                 const $el = $mikan(el);
                 const id = $el.attr('id');
                 if (id && id.startsWith('data-row-')) {
                     const day = parseInt(id.split('-').pop());
-                    // Mapping: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 0=Sun, 7=Movie, 8=OVA/Recent
                     if (day >= 1 && day <= 7) currentDayKey = dayKeys[day - 1];
                     else if (day === 0) currentDayKey = 'sunday';
                     else if (day === 8) currentDayKey = 'recent';
@@ -92,7 +90,6 @@ app.get('/api/schedule', async (req, res) => {
             });
         }
 
-        // 2. Supplement with Mikan Classic (Latest torrents)
         if (mikanClassicRes && mikanClassicRes.data) {
             const $classic = cheerio.load(mikanClassicRes.data);
             $classic('.table-striped tbody tr').each((i, el) => {
@@ -102,10 +99,7 @@ app.get('/api/schedule', async (req, res) => {
                     const existing = allMikanItems.find(m => m.id === id);
                     if (existing) {
                         existing.hasRecentRelease = true; 
-                        // If Mikan homepage doesn't show a count, but it's in the latest 100 torrents, force count to "最新"
-                        if (!existing.count || existing.count === "") {
-                            existing.count = "最新";
-                        }
+                        if (!existing.count || existing.count === "") existing.count = "最新";
                     }
                 }
             });
@@ -122,17 +116,11 @@ app.get('/api/schedule', async (req, res) => {
                     if (img && img.startsWith('//')) img = 'https:' + img;
                     const time = $anibk(el).find('.v.fs.tm').text().trim();
                     const ep = $anibk(el).find('.k').last().text().trim();
-                    
                     let subtitleUpdates = null;
                     for (let mItem of allMikanItems) {
                         if (fuzzyMatch(title, mItem.title)) {
-                            // IF matched, check if there's a count or a recent release
                             if (mItem.count || mItem.hasRecentRelease) {
-                                subtitleUpdates = { 
-                                    updateTime: mItem.updateTime || "最近更新", 
-                                    count: mItem.count || "新", 
-                                    id: mItem.id 
-                                };
+                                subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
                             }
                             mItem.matched = true;
                             break;
@@ -141,7 +129,6 @@ app.get('/api/schedule', async (req, res) => {
                     data[dayKey].push({ title, img, time, ep, subtitleUpdates, source: 'anibk' });
                 });
             }
-            
             $anibk('.wt-bk-list-zxsy > li').each((i, el) => {
                 const title = $anibk(el).find('.char-bk-title a').attr('title');
                 if (!title) return; 
@@ -149,7 +136,6 @@ app.get('/api/schedule', async (req, res) => {
                 if (img && img.startsWith('//')) img = 'https:' + img;
                 const time = $anibk(el).find('.fs-italic.fs-gray').text().trim() || '近期上映';
                 const ep = '新上映';
-                
                 let subtitleUpdates = null;
                 for (let mItem of allMikanItems) {
                     if (fuzzyMatch(title, mItem.title)) {
@@ -165,21 +151,33 @@ app.get('/api/schedule', async (req, res) => {
         }
 
         for (let mItem of allMikanItems) {
-            if (!mItem.matched) {
-                // Also show unmatched Mikan items if they have recent releases
-                if (mItem.count || mItem.hasRecentRelease) {
-                    data[mItem.originalDay].push({
-                        title: mItem.title, img: mItem.img, time: mItem.originalDay === 'recent' ? '近期更新' : '', ep: '',
-                        subtitleUpdates: { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id },
-                        source: 'mikan'
-                    });
-                }
+            if (!mItem.matched && (mItem.count || mItem.hasRecentRelease)) {
+                data[mItem.originalDay].push({
+                    title: mItem.title, img: mItem.img, time: mItem.originalDay === 'recent' ? '近期更新' : '', ep: '',
+                    subtitleUpdates: { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id },
+                    source: 'mikan'
+                });
             }
         }
-        res.json({ success: true, data });
-    } catch (error) {
-        console.error("API Error:", error);
-        res.status(500).json({ success: false, error: 'Failed to fetch data' });
+        cachedData = data;
+        lastScrapeTime = Date.now();
+        console.log("Scrape completed successfully.");
+    } catch (e) {
+        console.error("Scrape Error:", e.message);
+    }
+}
+
+// Initial scrape and interval every 5 minutes
+scrapeAll();
+setInterval(scrapeAll, 300000);
+
+app.get('/api/schedule', async (req, res) => {
+    if (cachedData) {
+        res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
+    } else {
+        // Fallback for first request if cache empty
+        await scrapeAll();
+        res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
     }
 });
 
