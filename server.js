@@ -17,16 +17,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Explicitly serve index.html for the root path
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper to normalize strings for comparison - Now more sensitive to Part/Season numbers
 const normalizeStr = (str) => {
     if (!str) return '';
     return str.replace(/（僅限.*?）|（仅限.*?）/g, '')
-              .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '') // Keep alphanumeric
+              .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')
               .toLowerCase();
 };
 
@@ -45,14 +43,10 @@ const fuzzyMatch = (str1, str2) => {
     const n1 = normalizeStr(str1);
     const n2 = normalizeStr(str2);
     if (!n1 || !n2) return false;
-
-    // 关键修复：如果两者的数字编号（如 #2 和 #3）不同，绝对不匹配
     const num1 = extractNum(str1);
     const num2 = extractNum(str2);
     if (num1 !== null && num2 !== null && num1 !== num2) return false;
-
     if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
-    
     if (n1.length > 4 && n2.length > 4) {
         const minLen = Math.min(n1.length, n2.length);
         const overlap = n1.substring(0, Math.floor(minLen * 0.8)) === n2.substring(0, Math.floor(minLen * 0.8));
@@ -64,7 +58,7 @@ const fuzzyMatch = (str1, str2) => {
 let cachedData = null;
 let lastScrapeTime = 0;
 let isScraping = false;
-let broadcastStatusCache = new Map(); // 存储番剧的集数和资源状态
+let broadcastStatusCache = new Map();
 
 async function scrapeAll() {
     if (isScraping) return cachedData;
@@ -82,7 +76,6 @@ async function scrapeAll() {
         const allMikanItems = [];
         dayKeys.forEach(k => data[k] = []);
 
-        // 1. 建立 Mikan 资源索引
         const mikanEpIndex = new Map();
         if (mikanClassicRes && mikanClassicRes.data) {
             const $classic = cheerio.load(mikanClassicRes.data);
@@ -92,11 +85,8 @@ async function scrapeAll() {
                 const gName = $tds.eq(1).find('a').text().trim() || "字幕组";
                 const fTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
                 const bId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
-                
-                // 精准提取数字集数
                 const epMatch = fTitle.match(/\[(\d{2,3})\]|第(\d+)话|第(\d+)集|(?:\s)-?\s*(\d{2,3})(?:\s|\[)/i);
                 const epNum = epMatch ? parseInt(epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4]) : null;
-
                 if (bId && epNum !== null) {
                     if (!mikanEpIndex.has(bId)) mikanEpIndex.set(bId, new Map());
                     const eps = mikanEpIndex.get(bId);
@@ -105,7 +95,6 @@ async function scrapeAll() {
             });
         }
 
-        // 2. 抓取 Mikan 首页番剧
         if (mikanRes && mikanRes.data) {
             const $mikan = cheerio.load(mikanRes.data);
             $mikan('.an-box li').each((j, li) => {
@@ -120,20 +109,17 @@ async function scrapeAll() {
             });
         }
 
-        // 3. 处理 AniBK 并触发差异更新
         const updatesFound = [];
         if (anibkRes && anibkRes.data) {
             const $anibk = cheerio.load(anibkRes.data);
             for (let day = 1; day <= 8; day++) {
                 const dayKey = dayKeys[day - 1];
                 const selector = day <= 7 ? `#wk-bk-${day} > li` : '.wt-bk-list-zxsy > li';
-                
                 $anibk(selector).each((i, el) => {
                     const title = $anibk(el).find('.char-bk-title a').attr('title');
                     if (!title) return;
                     const rawEp = $anibk(el).find('.k').last().text().trim();
                     const currentBroadcastEp = parseEpNum(rawEp);
-                    
                     let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('src');
                     if (img && img.startsWith('//')) img = 'https:' + img;
 
@@ -154,14 +140,11 @@ async function scrapeAll() {
                         }
                     }
 
-                    // 核心：比对缓存，触发通知
                     const cacheKey = `${title}_${dayKey}`;
                     const prev = broadcastStatusCache.get(cacheKey) || { ep: 0, hasRes: false };
-                    
                     if (currentBroadcastEp !== null) {
                         const isNewEp = currentBroadcastEp > prev.ep;
                         const justGotRes = !prev.hasRes && hasResource;
-
                         if (isNewEp || justGotRes) {
                             updatesFound.push({
                                 title,
