@@ -22,29 +22,35 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper to normalize strings for comparison
+// Helper to normalize strings for comparison - Now more sensitive to Part/Season numbers
 const normalizeStr = (str) => {
     if (!str) return '';
-    // Heavy normalization: remove season info, common tags, and non-alphanumeric chars
-    return str.replace(/第[一二三四五六七八九十\d]+[季期]/g, '')
-              .replace(/season\s*\d+/gi, '')
-              .replace(/part\s*\d+/gi, '')
-              .replace(/s\d+/gi, '')
-              .replace(/（僅限.*?）|（仅限.*?）/g, '')
-              .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')
+    return str.replace(/（僅限.*?）|（仅限.*?）/g, '')
+              .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '') // Keep alphanumeric
               .toLowerCase();
+};
+
+const extractNum = (str) => {
+    const match = str.match(/(?:#|part|第|season)\s*(\d+)/i);
+    return match ? match[1] : null;
 };
 
 const fuzzyMatch = (str1, str2) => {
     const n1 = normalizeStr(str1);
     const n2 = normalizeStr(str2);
     if (!n1 || !n2) return false;
+
+    // 关键修复：如果两者的数字编号（如 #2 和 #3）不同，绝对不匹配
+    const num1 = extractNum(str1);
+    const num2 = extractNum(str2);
+    if (num1 && num2 && num1 !== num2) return false;
+
     if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
     
-    // Check for 85% similarity in longer strings
+    // Similarity check
     if (n1.length > 4 && n2.length > 4) {
         const minLen = Math.min(n1.length, n2.length);
-        const overlap = n1.substring(0, Math.floor(minLen * 0.85)) === n2.substring(0, Math.floor(minLen * 0.85));
+        const overlap = n1.substring(0, Math.floor(minLen * 0.8)) === n2.substring(0, Math.floor(minLen * 0.8));
         if (overlap) return true;
     }
     return false;
