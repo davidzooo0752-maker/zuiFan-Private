@@ -80,15 +80,23 @@ async function scrapeAll() {
                 const gName = $tds.eq(1).find('a').text().trim() || "字幕组";
                 const fTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
                 const bId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
-                const epMatch = fTitle.match(/\[(\d{2,3})\]|第(\d+)话|第(\d+)集|(?:\s)-?\s*(\d{2,3})(?:\s|\[)/i);
-                const epNum = epMatch ? parseInt(epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4]) : null;
+                // 增强型超强正则表达式：匹配各种刁钻格式的集数
+                // 优先级：[05] > - 05 > 第5话 > 空格05空格 > 05.mp4
+                const epMatch = fTitle.match(/\[(\d{1,3})(?:v\d+)?\]|第\s*(\d{1,3})\s*[话集]|(?:EP|Episode)\s*(\d{1,3})|[-\s\.]+0*(\d{1,3})(?:\s|\[|\.|$)/i);
+
+                let epNum = null;
+                if (epMatch) {
+                    // 依次检查正则的捕获组，提取第一个命中的数字
+                    const rawNum = epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4];
+                    epNum = parseInt(rawNum);
+                }
+
                 if (bId && epNum !== null) {
                     if (!mikanEpIndex.has(bId)) mikanEpIndex.set(bId, new Map());
                     const eps = mikanEpIndex.get(bId);
+                    // 如果同一集有多个组或多个版本，我们记录第一个发现的
                     if (!eps.has(epNum)) eps.set(epNum, { groupName: gName });
                 }
-            });
-        }
 
         if (mikanRes && mikanRes.data) {
             const $mikan = cheerio.load(mikanRes.data);
