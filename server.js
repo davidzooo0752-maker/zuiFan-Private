@@ -32,7 +32,13 @@ const normalizeStr = (str) => {
 
 const extractNum = (str) => {
     const match = str.match(/(?:#|part|第|season)\s*(\d+)/i);
-    return match ? match[1] : null;
+    return match ? parseInt(match[1]) : null;
+};
+
+const parseEpNum = (str) => {
+    if (!str) return null;
+    const match = str.match(/(\d+)/);
+    return match ? parseInt(match[1]) : null;
 };
 
 const fuzzyMatch = (str1, str2) => {
@@ -43,11 +49,10 @@ const fuzzyMatch = (str1, str2) => {
     // 关键修复：如果两者的数字编号（如 #2 和 #3）不同，绝对不匹配
     const num1 = extractNum(str1);
     const num2 = extractNum(str2);
-    if (num1 && num2 && num1 !== num2) return false;
+    if (num1 !== null && num2 !== null && num1 !== num2) return false;
 
     if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
     
-    // Similarity check
     if (n1.length > 4 && n2.length > 4) {
         const minLen = Math.min(n1.length, n2.length);
         const overlap = n1.substring(0, Math.floor(minLen * 0.8)) === n2.substring(0, Math.floor(minLen * 0.8));
@@ -59,12 +64,13 @@ const fuzzyMatch = (str1, str2) => {
 let cachedData = null;
 let lastScrapeTime = 0;
 let isScraping = false;
+let broadcastStatusCache = new Map(); // 存储番剧的集数和资源状态
 
 async function scrapeAll() {
     if (isScraping) return cachedData;
     isScraping = true;
     try {
-        console.log("Starting background scrape...");
+        console.log("Starting synchronized scrape...");
         const [anibkRes, mikanRes, mikanClassicRes] = await Promise.all([
             axios.get('https://www.anibk.com/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
             axios.get('https://mikanani.me/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
@@ -76,209 +82,143 @@ async function scrapeAll() {
         const allMikanItems = [];
         dayKeys.forEach(k => data[k] = []);
 
-        const recentUpdatesMap = new Map();
+        // 1. 建立 Mikan 资源索引
+        const mikanEpIndex = new Map();
         if (mikanClassicRes && mikanClassicRes.data) {
             const $classic = cheerio.load(mikanClassicRes.data);
             $classic('.table-striped tbody tr').each((i, el) => {
-                if (i > 100) return; // 扩大搜索到100条
-                const $tds = $classic(el).find('td'); 
-                const groupName = $tds.eq(1).find('a').text().trim() || "字幕组";
-                const fullTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
-                const animeId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
+                if (i > 200) return;
+                const $tds = $classic(el).find('td');
+                const gName = $tds.eq(1).find('a').text().trim() || "字幕组";
+                const fTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
+                const bId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
                 
-                // 增强型正则表达式：匹配多种集数格式
-                const epMatch = fullTitle.match(/\[(\d+)\]|第(\d+)[话集]|EP(\d+)|-(\s*)(\d+)/i);
-                const episode = epMatch ? (epMatch[1] || epMatch[2] || epMatch[3] || epMatch[5]) : "新";
+                // 精准提取数字集数
+                const epMatch = fTitle.match(/\[(\d{2,3})\]|第(\d+)话|第(\d+)集|(?:\s)-?\s*(\d{2,3})(?:\s|\[)/i);
+                const epNum = epMatch ? parseInt(epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4]) : null;
 
-                if (animeId && !recentUpdatesMap.has(animeId)) {
-                    recentUpdatesMap.set(animeId, { groupName, episode });
+                if (bId && epNum !== null) {
+                    if (!mikanEpIndex.has(bId)) mikanEpIndex.set(bId, new Map());
+                    const eps = mikanEpIndex.get(bId);
+                    if (!eps.has(epNum)) eps.set(epNum, { groupName: gName });
                 }
             });
         }
 
+        // 2. 抓取 Mikan 首页番剧
         if (mikanRes && mikanRes.data) {
             const $mikan = cheerio.load(mikanRes.data);
-            let currentDayKey = 'unknown';
-            $mikan('.sk-bangumi').children().each((i, el) => {
-                const $el = $mikan(el);
-                const id = $el.attr('id');
-                if (id && id.startsWith('data-row-')) {
-                    const day = parseInt(id.split('-').pop());
-                    if (day >= 1 && day <= 7) currentDayKey = dayKeys[day - 1];
-                    else if (day === 0) currentDayKey = 'sunday';
-                    else if (day === 8) currentDayKey = 'recent';
-                } else if ($el.hasClass('an-box')) {
-                    $el.find('li').each((j, li) => {
-                        const title = $mikan(li).find('a.an-text').attr('title');
-                        let img = $mikan(li).find('span.js-expand_bangumi').attr('data-src') || $mikan(li).find('img').attr('src');
-                        if (img && img.startsWith('//')) img = 'https:' + img;
-                        if (img && img.startsWith('/')) img = 'https://mikanani.me' + img;
-                        
-                        const updateTime = $mikan(li).find('.date-text').text().trim();
-                        const count = $mikan(li).find('.num-node').text().trim() || "1";
-                        const bangumiId = $mikan(li).find('span.js-expand_bangumi').attr('data-bangumiid');
-                        
-                        // 关联详细的字幕组信息
-                        const detail = recentUpdatesMap.get(bangumiId);
-
-                        if (title) {
-                            allMikanItems.push({ 
-                                title, img, updateTime, count, id: bangumiId, 
-                                matched: false, originalDay: currentDayKey !== 'unknown' ? currentDayKey : 'recent',
-                                groupName: detail ? detail.groupName : "字幕组",
-                                episode: detail ? detail.episode : count
-                            });
-                        }
-                    });
+            $mikan('.an-box li').each((j, li) => {
+                const title = $mikan(li).find('a.an-text').attr('title');
+                const bId = $mikan(li).find('span.js-expand_bangumi').attr('data-bangumiid');
+                let img = $mikan(li).find('span.js-expand_bangumi').attr('data-src') || $mikan(li).find('img').attr('src');
+                if (img && img.startsWith('//')) img = 'https:' + img;
+                if (img && img.startsWith('/')) img = 'https://mikanani.me' + img;
+                if (title && bId) {
+                    allMikanItems.push({ title, id: bId, img, updateTime: $mikan(li).find('.date-text').text().trim() });
                 }
             });
         }
 
+        // 3. 处理 AniBK 并触发差异更新
+        const updatesFound = [];
         if (anibkRes && anibkRes.data) {
             const $anibk = cheerio.load(anibkRes.data);
-            for (let day = 1; day <= 7; day++) {
+            for (let day = 1; day <= 8; day++) {
                 const dayKey = dayKeys[day - 1];
-                $anibk(`#wk-bk-${day} > li`).each((i, el) => {
+                const selector = day <= 7 ? `#wk-bk-${day} > li` : '.wt-bk-list-zxsy > li';
+                
+                $anibk(selector).each((i, el) => {
                     const title = $anibk(el).find('.char-bk-title a').attr('title');
                     if (!title) return;
-                    let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('data-original') || $anibk(el).find('.char-bk-pic img').attr('src');
+                    const rawEp = $anibk(el).find('.k').last().text().trim();
+                    const currentBroadcastEp = parseEpNum(rawEp);
+                    
+                    let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('src');
                     if (img && img.startsWith('//')) img = 'https:' + img;
-                    
-                    const time = $anibk(el).find('.v.fs.tm').text().trim();
-                    const ep = $anibk(el).find('.k').last().text().trim();
+
                     let subtitleUpdates = null;
-                    let matchedMItem = null;
-                    
+                    let mikanGroup = "字幕组";
+                    let hasResource = false;
+
                     for (let mItem of allMikanItems) {
                         if (fuzzyMatch(title, mItem.title)) {
-                            matchedMItem = mItem;
                             if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
-                            if (mItem.count || mItem.hasRecentRelease) {
-                                subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
+                            const resources = mikanEpIndex.get(mItem.id);
+                            if (resources && currentBroadcastEp !== null && resources.has(currentBroadcastEp)) {
+                                mikanGroup = resources.get(currentBroadcastEp).groupName;
+                                hasResource = true;
+                                subtitleUpdates = { updateTime: mItem.updateTime, count: currentBroadcastEp, id: mItem.id };
                             }
-                            mItem.matched = true;
                             break;
                         }
                     }
+
+                    // 核心：比对缓存，触发通知
+                    const cacheKey = `${title}_${dayKey}`;
+                    const prev = broadcastStatusCache.get(cacheKey) || { ep: 0, hasRes: false };
+                    
+                    if (currentBroadcastEp !== null) {
+                        const isNewEp = currentBroadcastEp > prev.ep;
+                        const justGotRes = !prev.hasRes && hasResource;
+
+                        if (isNewEp || justGotRes) {
+                            updatesFound.push({
+                                title,
+                                episode: currentBroadcastEp,
+                                groupName: hasResource ? `${mikanGroup}已更新` : "字幕组未更新",
+                                isHighlight: hasResource
+                            });
+                            broadcastStatusCache.set(cacheKey, { ep: currentBroadcastEp, hasRes: hasResource });
+                        }
+                    }
+
                     data[dayKey].push({ 
-                        title, img, time, ep, subtitleUpdates, source: 'anibk',
-                        groupName: matchedMItem ? matchedMItem.groupName : "字幕组",
-                        episode: matchedMItem ? matchedMItem.episode : "最新"
+                        title, img, time: $anibk(el).find('.v.fs.tm').text().trim(), ep: rawEp, 
+                        subtitleUpdates, groupName: mikanGroup, episode: currentBroadcastEp || "新",
+                        source: 'anibk'
                     });
                 });
             }
-            $anibk('.wt-bk-list-zxsy > li').each((i, el) => {
-                const title = $anibk(el).find('.char-bk-title a').attr('title');
-                if (!title) return; 
-                let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('data-original') || $anibk(el).find('.char-bk-pic img').attr('src');
-                if (img && img.startsWith('//')) img = 'https:' + img;
-                
-                const time = $anibk(el).find('.fs-italic.fs-gray').text().trim() || '近期上映';
-                const ep = '新上映';
-                let subtitleUpdates = null;
-                let matchedMItem = null;
-                
-                for (let mItem of allMikanItems) {
-                    if (fuzzyMatch(title, mItem.title)) {
-                        matchedMItem = mItem;
-                        if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
-                        if (mItem.count || mItem.hasRecentRelease) {
-                            subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
-                        }
-                        mItem.matched = true;
-                        break;
-                    }
-                }
-                data['recent'].push({ 
-                    title, img, time, ep, subtitleUpdates, source: 'anibk',
-                    groupName: matchedMItem ? matchedMItem.groupName : "字幕组",
-                    episode: matchedMItem ? matchedMItem.episode : "最新"
-                });
-            });
-        }
-
-        for (let mItem of allMikanItems) {
-            if (!mItem.matched && (mItem.count || mItem.hasRecentRelease)) {
-                data[mItem.originalDay].push({
-                    title: mItem.title, img: mItem.img, time: mItem.originalDay === 'recent' ? '近期更新' : '', ep: '',
-                    subtitleUpdates: { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id },
-                    source: 'mikan',
-                    groupName: mItem.groupName || "字幕组",
-                    episode: mItem.episode || "最新"
-                });
-            }
-        }
-
-        // Compare with old cache to detect updates
-        const updatesFound = [];
-        if (cachedData) {
-            Object.keys(data).forEach(day => {
-                data[day].forEach(item => {
-                    if (item.subtitleUpdates) {
-                        const oldItem = cachedData[day].find(o => o.title === item.title);
-                        if (!oldItem || !oldItem.subtitleUpdates || oldItem.subtitleUpdates.updateTime !== item.subtitleUpdates.updateTime) {
-                            updatesFound.push(item);
-                        }
-                    }
-                });
-            });
         }
 
         cachedData = data;
         lastScrapeTime = Date.now();
+        if (updatesFound.length > 0) io.emit('new_update', updatesFound);
         console.log("Scrape completed successfully.");
-
-        if (updatesFound.length > 0) {
-            console.log(`Found ${updatesFound.length} updates! Emitting to clients...`);
-            io.emit('new_update', updatesFound);
-        }
-
         return cachedData;
     } catch (e) {
         console.error("Scrape Error:", e.message);
         return cachedData;
-    } finally {
-        isScraping = false;
-    }
+    } finally { isScraping = false; }
 }
 
-// Initial scrape and interval every 3 minutes
 scrapeAll();
 setInterval(scrapeAll, 180000);
 
 app.get('/api/schedule', async (req, res) => {
     const force = req.query.force === 'true';
-    if (force) {
-        console.log("Forced scrape requested via API...");
-        const data = await scrapeAll();
-        return res.json({ success: true, data, lastUpdate: lastScrapeTime, forced: true });
-    }
-
-    if (cachedData) {
-        res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
-    } else {
-        await scrapeAll();
-        res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
-    }
+    if (force) { await scrapeAll(); }
+    res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime, forced: force });
 });
 
 app.get('/api/subtitles/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const resMikan = await axios.get(`https://mikanime.tv/Home/Bangumi/${id}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const resMikan = await axios.get(`https://mikanani.me/Home/Bangumi/${id}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const $ = cheerio.load(resMikan.data);
         const data = [];
         $('.table-striped').each((i, table) => {
             let groupName = $(table).parent().find('.subgroup-text').text().trim().replace(/\s+/g, ' ');
             groupName = groupName.split(' 已订阅')[0].split(' 订阅')[0].trim();
             if (!groupName) {
-                const firstTitle = $(table).find('tbody tr').first().find('a.magnet-link-wrap').text().trim() || $(table).find('tbody tr').first().find('td').first().text().trim();
+                const firstTitle = $(table).find('tbody tr').first().find('a.magnet-link-wrap').text().trim();
                 const match = firstTitle.match(/^[\[【](.*?)[\]】]/);
-                groupName = (match && match[1]) ? match[1].trim() + "字幕组" : "其他资源";
+                groupName = match ? match[1].trim() + "字幕组" : "其他资源";
             }
             const resources = [];
             $(table).find('tbody tr').each((j, row) => {
-                let title = $(row).find('a.magnet-link-wrap').text().trim() || $(row).find('td').first().text().trim().replace(/\[复制磁连\]/, '').trim();
+                let title = $(row).find('a.magnet-link-wrap').text().trim();
                 const magnet = $(row).find('a.js-magnet').attr('data-clipboard-text');
                 const size = $(row).find('td').eq(1).text().trim();
                 const time = $(row).find('td').eq(2).text().trim();
@@ -287,11 +227,7 @@ app.get('/api/subtitles/:id', async (req, res) => {
             if (resources.length > 0) data.push({ groupName, resources });
         });
         res.json({ success: true, data });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Failed' });
-    }
+    } catch (error) { res.status(500).json({ success: false, error: 'Failed' }); }
 });
 
-server.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () => { console.log(`Server is running at http://localhost:${PORT}`); });

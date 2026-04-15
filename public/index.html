@@ -294,9 +294,8 @@
         socket.on('new_update', (updates) => {
             triggerUpdateAlert(updates);
             const msg = updates.map(u => {
-                const ep = u.episode || "最新";
-                const group = u.groupName || "字幕组";
-                return `【新更新】${u.title} - 第 ${ep} 集 - ${group}`;
+                // 直接使用后端已经格式化好的 groupName 状态文字
+                return `【新更新】${u.title} - 第 ${u.episode} 集 (${u.groupName})`;
             }).join('  |  ');
             const el = document.getElementById('announcementText'); if (el) el.innerText = msg;
             fetchData(false);
@@ -467,22 +466,56 @@
             if (activeFilter) filterCards(activeFilter.dataset.filter);
         }
 
-        async function openSubgroups(id, title, updateTime) {
+        async function openSubgroups(id, title, updateTime, targetEp) {
             currentAnimeId = id; currentAnimeUpdateTime = updateTime;
             document.getElementById('modalTitle').innerText = title;
             const body = document.getElementById('modalBody');
             document.getElementById('detailModal').style.display = 'flex';
             if (body) {
-                body.innerHTML = '<div class="loading">加载中...</div>';
+                body.innerHTML = '<div class="loading">正在分析最新集数...</div>';
                 try {
                     const res = await fetch(`/api/subtitles/${id}`);
                     const result = await res.json();
                     if (result.success && result.data.length) {
                         let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><label style="color:var(--primary-color);font-weight:bold;"><input type="checkbox" onchange="toggleAllMagnets(this)"> 全选</label><button class="magnet-btn" style="background:#4caf50;color:white;" onclick="copySelected()">复制选中</button></div>`;
+                        
+                        // 目标集数（转为数字，如 5）
+                        const targetEpNum = parseInt(targetEp) || 0;
+
                         result.data.forEach(group => {
-                            html += `<div class="sg-section"><h4 class="sg-title">${group.groupName}</h4><div class="resource-list">`;
+                            // 检查该组内是否有任何资源包含目标集数
+                            const hasNewEpInGroup = group.resources.some(r => {
+                                const epMatch = r.title.match(/\[(\d{2,3})\]|第(\d+)话|第(\d+)集|(?:\s)-?\s*(\d{2,3})(?:\s|\[)/i);
+                                const ep = epMatch ? parseInt(epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4]) : null;
+                                return ep === targetEpNum;
+                            });
+
+                            html += `
+                            <div class="sg-section">
+                                <h4 class="sg-title">
+                                    <span>${group.groupName}</span>
+                                    ${hasNewEpInGroup ? '<span class="group-new-badge">NEW EPISODE</span>' : ''}
+                                </h4>
+                                <div class="resource-list">`;
+                            
                             group.resources.forEach(r => {
-                                html += `<div class="resource-item"><input type="checkbox" class="magnet-checkbox" value="${r.magnet.trim()}"><div style="flex:1;min-width:0;margin:0 10px;"><div class="resource-title">${r.title}</div></div><button class="magnet-btn" onclick="copyText('${r.magnet.trim()}', '已复制磁力')">复制</button></div>`;
+                                const epMatch = r.title.match(/\[(\d{2,3})\]|第(\d+)话|第(\d+)集|(?:\s)-?\s*(\d{2,3})(?:\s|\[)/i);
+                                const ep = epMatch ? parseInt(epMatch[1] || epMatch[2] || epMatch[3] || epMatch[4]) : null;
+                                const isNew = (ep === targetEpNum);
+
+                                html += `
+                                <div class="resource-item ${isNew ? 'is-new-resource' : ''}">
+                                    ${isNew ? '<span class="res-new-tag" style="position:absolute; left:-10px; top:-10px;">NEW</span>' : ''}
+                                    <input type="checkbox" class="magnet-checkbox" value="${r.magnet.trim()}">
+                                    <div style="flex:1;min-width:0;margin:0 10px;">
+                                        <div class="resource-title">${r.title}</div>
+                                        <div style="font-size: 0.7em; color: var(--text-light); margin-top: 5px; display: flex; gap: 15px;">
+                                            <span>💾 ${r.size}</span>
+                                            <span style="${isNew ? 'color: var(--primary-color); font-weight: bold;' : ''}">🕒 ${r.time}</span>
+                                        </div>
+                                    </div>
+                                    <button class="magnet-btn" onclick="copyText('${r.magnet.trim()}', '已复制磁力')">复制</button>
+                                </div>`;
                             });
                             html += `</div></div>`;
                         });
