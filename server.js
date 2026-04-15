@@ -74,18 +74,18 @@ async function scrapeAll() {
         if (mikanClassicRes && mikanClassicRes.data) {
             const $classic = cheerio.load(mikanClassicRes.data);
             $classic('.table-striped tbody tr').each((i, el) => {
-                if (i > 50) return; 
+                if (i > 100) return; // 扩大搜索到100条
                 const $tds = $classic(el).find('td'); 
-                const groupName = $tds.eq(1).find('a').text().trim() || "未知字幕组";
+                const groupName = $tds.eq(1).find('a').text().trim() || "字幕组";
                 const fullTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
                 const animeId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
                 
-                // 尝试从标题中提取集数，如 [01], EP01, 第1话 等
+                // 增强型正则表达式：匹配多种集数格式
                 const epMatch = fullTitle.match(/\[(\d+)\]|第(\d+)[话集]|EP(\d+)|-(\s*)(\d+)/i);
                 const episode = epMatch ? (epMatch[1] || epMatch[2] || epMatch[3] || epMatch[5]) : "新";
 
                 if (animeId && !recentUpdatesMap.has(animeId)) {
-                    recentUpdatesMap.set(animeId, { groupName, episode, fullTitle });
+                    recentUpdatesMap.set(animeId, { groupName, episode });
                 }
             });
         }
@@ -141,12 +141,12 @@ async function scrapeAll() {
                     const time = $anibk(el).find('.v.fs.tm').text().trim();
                     const ep = $anibk(el).find('.k').last().text().trim();
                     let subtitleUpdates = null;
+                    let matchedMItem = null;
                     
                     for (let mItem of allMikanItems) {
                         if (fuzzyMatch(title, mItem.title)) {
-                            // 互补逻辑：如果 AniBK 图片无效，使用 Mikan 的图片
+                            matchedMItem = mItem;
                             if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
-                            
                             if (mItem.count || mItem.hasRecentRelease) {
                                 subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
                             }
@@ -154,7 +154,11 @@ async function scrapeAll() {
                             break;
                         }
                     }
-                    data[dayKey].push({ title, img, time, ep, subtitleUpdates, source: 'anibk' });
+                    data[dayKey].push({ 
+                        title, img, time, ep, subtitleUpdates, source: 'anibk',
+                        groupName: matchedMItem ? matchedMItem.groupName : "字幕组",
+                        episode: matchedMItem ? matchedMItem.episode : "最新"
+                    });
                 });
             }
             $anibk('.wt-bk-list-zxsy > li').each((i, el) => {
@@ -166,12 +170,12 @@ async function scrapeAll() {
                 const time = $anibk(el).find('.fs-italic.fs-gray').text().trim() || '近期上映';
                 const ep = '新上映';
                 let subtitleUpdates = null;
+                let matchedMItem = null;
                 
                 for (let mItem of allMikanItems) {
                     if (fuzzyMatch(title, mItem.title)) {
-                        // 互补逻辑
+                        matchedMItem = mItem;
                         if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
-                        
                         if (mItem.count || mItem.hasRecentRelease) {
                             subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
                         }
@@ -179,7 +183,11 @@ async function scrapeAll() {
                         break;
                     }
                 }
-                data['recent'].push({ title, img, time, ep, subtitleUpdates, source: 'anibk' });
+                data['recent'].push({ 
+                    title, img, time, ep, subtitleUpdates, source: 'anibk',
+                    groupName: matchedMItem ? matchedMItem.groupName : "字幕组",
+                    episode: matchedMItem ? matchedMItem.episode : "最新"
+                });
             });
         }
 
@@ -188,7 +196,9 @@ async function scrapeAll() {
                 data[mItem.originalDay].push({
                     title: mItem.title, img: mItem.img, time: mItem.originalDay === 'recent' ? '近期更新' : '', ep: '',
                     subtitleUpdates: { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id },
-                    source: 'mikan'
+                    source: 'mikan',
+                    groupName: mItem.groupName || "字幕组",
+                    episode: mItem.episode || "最新"
                 });
             }
         }

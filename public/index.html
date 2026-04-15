@@ -265,7 +265,11 @@
         const socket = io();
         socket.on('new_update', (updates) => {
             triggerUpdateAlert(updates);
-            const msg = updates.map(u => `【新更新】${u.title} (第 ${u.episode} 集 - ${u.groupName})`).join('  |  ');
+            const msg = updates.map(u => {
+                const ep = u.episode || "最新";
+                const group = u.groupName || "字幕组";
+                return `【新更新】${u.title} - 第 ${ep} 集 - ${group}`;
+            }).join('  |  ');
             const el = document.getElementById('announcementText'); if (el) el.innerText = msg;
             fetchData(false);
         });
@@ -370,7 +374,10 @@
                     if (!force) checkForUpdates(result.data); 
                     renderData(result.data);
                     const sync = document.getElementById('lastSync');
-                    if (sync) sync.innerText = `最后同步: ${new Date().toLocaleTimeString()} ${result.forced ? '(强制刷新成功)' : ''}`;
+                    if (sync && result.lastUpdate) {
+                        const serverTime = new Date(result.lastUpdate).toLocaleTimeString();
+                        sync.innerText = `数据源同步: ${serverTime} ${result.forced ? '(强制刷新成功)' : ''}`;
+                    }
                 }
             } catch (e) { console.error(e); } finally { if (force && btn) { btn.disabled = false; icon.classList.remove('spinning'); } }
         }
