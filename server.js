@@ -47,11 +47,6 @@ const fuzzyMatch = (str1, str2) => {
     const num2 = extractNum(str2);
     if (num1 !== null && num2 !== null && num1 !== num2) return false;
     if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) return true;
-    if (n1.length > 4 && n2.length > 4) {
-        const minLen = Math.min(n1.length, n2.length);
-        const overlap = n1.substring(0, Math.floor(minLen * 0.8)) === n2.substring(0, Math.floor(minLen * 0.8));
-        if (overlap) return true;
-    }
     return false;
 };
 
@@ -120,21 +115,24 @@ async function scrapeAll() {
                     if (!title) return;
                     const rawEp = $anibk(el).find('.k').last().text().trim();
                     const currentBroadcastEp = parseEpNum(rawEp);
+                    
                     let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('src');
                     if (img && img.startsWith('//')) img = 'https:' + img;
 
                     let subtitleUpdates = null;
+                    let mikanId = null;
                     let mikanGroup = "字幕组";
                     let hasResource = false;
 
                     for (let mItem of allMikanItems) {
                         if (fuzzyMatch(title, mItem.title)) {
+                            mikanId = mItem.id;
                             if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
                             const resources = mikanEpIndex.get(mItem.id);
                             if (resources && currentBroadcastEp !== null && resources.has(currentBroadcastEp)) {
                                 mikanGroup = resources.get(currentBroadcastEp).groupName;
                                 hasResource = true;
-                                subtitleUpdates = { updateTime: mItem.updateTime, count: currentBroadcastEp, id: mItem.id };
+                                subtitleUpdates = { updateTime: mItem.updateTime, count: currentBroadcastEp };
                             }
                             break;
                         }
@@ -146,20 +144,14 @@ async function scrapeAll() {
                         const isNewEp = currentBroadcastEp > prev.ep;
                         const justGotRes = !prev.hasRes && hasResource;
                         if (isNewEp || justGotRes) {
-                            updatesFound.push({
-                                title,
-                                episode: currentBroadcastEp,
-                                groupName: hasResource ? `${mikanGroup}已更新` : "字幕组未更新",
-                                isHighlight: hasResource
-                            });
+                            updatesFound.push({ title, episode: currentBroadcastEp, groupName: hasResource ? `${mikanGroup}已更新` : "字幕组未更新" });
                             broadcastStatusCache.set(cacheKey, { ep: currentBroadcastEp, hasRes: hasResource });
                         }
                     }
 
                     data[dayKey].push({ 
                         title, img, time: $anibk(el).find('.v.fs.tm').text().trim(), ep: rawEp, 
-                        subtitleUpdates, groupName: mikanGroup, episode: currentBroadcastEp || "新",
-                        source: 'anibk'
+                        subtitleUpdates, mikanId, groupName: mikanGroup, episode: currentBroadcastEp || 1
                     });
                 });
             }
@@ -181,7 +173,7 @@ setInterval(scrapeAll, 180000);
 
 app.get('/api/schedule', async (req, res) => {
     const force = req.query.force === 'true';
-    if (force) { await scrapeAll(); }
+    if (force) await scrapeAll();
     res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime, forced: force });
 });
 
