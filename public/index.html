@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Sorani青空次元动漫放送数据面板</title>
+    <style>
+        :root {
+            --primary-color: #D4AF37; 
+            --secondary-color: #b08d29;
+            --accent-color: #e5c158;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            --text-color: #ffffff;
+            --text-light: rgba(255, 255, 255, 0.5);
+            --badge-bg: rgba(255, 255, 255, 0.05);
+            --badge-text: #D4AF37;
+            --broadcasted-bg: rgba(212, 175, 55, 0.15);
+            --broadcasted-text: #D4AF37;
+            --unbroadcasted-bg: rgba(192, 192, 192, 0.15);
+            --unbroadcasted-text: #C0C0C0;
+            --sidebar-width: 200px;
+            --font-sans: "Inter", "Segoe UI", "Microsoft YaHei", sans-serif;
+            --font-serif: "Playfair Display", serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            background-color: #050505;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 15% 50%, rgba(212, 175, 55, 0.08), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.03), transparent 25%);
+            z-index: -1; animation: blob 10s infinite alternate ease-in-out;
+        }
+        @keyframes blob { 0% { transform: translate(0,0); } 100% { transform: translate(20px, -20px); } }
+
+        .sidebar {
+            width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0;
+            background: var(--glass-bg); backdrop-filter: blur(24px); border-right: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow); display: flex; flex-direction: column; padding: 30px 0; z-index: 100; overflow-y: auto;
+        }
+        .sidebar-logo { text-align: center; margin-bottom: 30px; }
+        .sidebar-logo h2 { color: var(--primary-color); font-family: var(--font-serif); font-style: italic; font-size: 1.6em; margin: 0; }
+
+        .day-nav { display: flex; flex-direction: column; gap: 8px; padding: 0 12px; }
+        .day-nav-btn {
+            background: transparent; color: var(--text-light); padding: 10px 15px; border-radius: 10px; font-weight: bold; font-size: 0.9em;
+            cursor: pointer; transition: all 0.3s; text-decoration: none; display: flex; align-items: center; border: 1px solid transparent;
+        }
+        .day-nav-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .day-nav-btn.active { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; }
+
+        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 25px 30px; max-width: calc(100vw - var(--sidebar-width)); box-sizing: border-box; }
+
+        header {
+            text-align: left; margin-bottom: 25px; padding: 25px; background: var(--glass-bg); backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border); border-radius: 2rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-text h1 { margin: 0; font-size: 2em; font-family: var(--font-serif); font-weight: 900; font-style: italic; }
+        .header-sub { font-size: 0.8em; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-light); margin-top: 5px; }
+
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 25px; padding: 12px 20px; background: var(--glass-bg); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); border-radius: 1.5rem; overflow-x: auto; }
+        .filter-btn { background: transparent; color: var(--text-light); border: 1px solid var(--glass-border); padding: 6px 20px; border-radius: 18px; font-weight: bold; font-size: 0.85em; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
+        .filter-btn.active { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; }
+
+        .refresh-btn { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+
+        .day-section { margin-bottom: 40px; scroll-margin-top: 30px; }
+        .day-title { color: var(--primary-color); background: var(--glass-bg); padding: 6px 16px; border-radius: 10px; font-family: var(--font-serif); font-style: italic; display: inline-block; margin-bottom: 20px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+
+        .card {
+            background: var(--glass-bg); backdrop-filter: blur(24px); border-radius: 2rem; overflow: hidden;
+            transition: all 0.5s ease; display: flex; flex-direction: column; border: 1px solid var(--glass-border); position: relative;
+        }
+        .card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.05); }
+
+        .card-img-wrapper { position: relative; width: 100%; height: 260px; overflow: hidden; background: #000; }
+        .card-img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+        .card:hover .card-img { transform: scale(1.05); }
+
+        /* 状态标记 */
+        .card.is-unbroadcasted { background: rgba(80, 80, 80, 0.1); }
+        .card.is-unbroadcasted .card-img-wrapper, .card.is-unbroadcasted .card-title, .card.is-unbroadcasted .status-badge { filter: grayscale(100%) opacity(0.3); }
+        .card.is-unbroadcasted .card-time { color: #D4AF37; text-shadow: 0 0 15px #D4AF37; font-size: 1.2em; font-weight: 900; filter: none; opacity: 1; padding: 3px 8px; background: rgba(212,175,55,0.1); border-radius: 6px; }
+
+        .card.is-broadcasted { border-color: rgba(212,175,55,0.5); }
+
+        .card-content { padding: 15px; display: flex; flex-direction: column; flex-grow: 1; gap: 6px; }
+        .card-title { font-size: 0.95em; font-weight: bold; color: var(--primary-color); cursor: pointer; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.8em; line-height: 1.4; }
+        .card-info { font-size: 0.85em; color: var(--text-light); display: flex; justify-content: space-between; align-items: center; }
+        .card-time { font-size: 1.1em; font-weight: 900; font-family: var(--font-serif); color: var(--primary-color); }
+        .time-status { font-size: 0.7em; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--glass-border); margin-left: 5px; }
+        .status-broadcasted { background: var(--broadcasted-bg); color: var(--broadcasted-text); }
+        .status-unbroadcasted { background: var(--unbroadcasted-bg); color: var(--unbroadcasted-text); }
+
+        /* 右上角 NEW 丝带 */
+        .card-new-ribbon {
+            position: absolute; top: 0; right: 0; width: 70px; height: 70px; overflow: hidden; z-index: 20; pointer-events: none; display: none;
+        }
+        .card-new-ribbon span {
+            position: absolute; display: block; width: 100px; padding: 4px 0; background: linear-gradient(135deg, #ff5252, #f48fb1);
+            color: #fff; font-size: 10px; font-weight: 900; text-align: center; right: -25px; top: 15px; transform: rotate(45deg);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); animation: pulse-ribbon 2s infinite;
+        }
+        @keyframes pulse-ribbon { 0%, 100% { opacity: 1; transform: rotate(45deg) scale(1); } 50% { opacity: 0.8; transform: rotate(45deg) scale(1.05); } }
+
+        .status-badge { margin-top: auto; background: var(--badge-bg); color: var(--badge-text); padding: 8px; border-radius: 10px; font-size: 0.8em; text-align: center; border: 1px solid var(--glass-border); transition: 0.3s; }
+        .status-badge.clickable { cursor: pointer; }
+        .status-badge.clickable:hover { background: rgba(255,255,255,0.08); }
+        .status-badge.no-update { color: var(--text-light); }
+
+        .source-tag { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: var(--primary-color); border: 1px solid var(--primary-color); padding: 2px 8px; border-radius: 4px; font-size: 0.7em; z-index: 10; font-weight: bold; }
+
+        /* 弹窗 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(12px); }
+        .modal-content { background: rgba(10,10,10,0.9); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); width: 90%; max-width: 800px; max-height: 85vh; border-radius: 2rem; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { padding: 20px 25px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { margin: 0; color: var(--primary-color); font-size: 1.3em; font-family: var(--font-serif); font-weight: bold; }
+        .close-btn { background: rgba(255,255,255,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-light); display: flex; justify-content: center; align-items: center; }
+        .modal-body { padding: 20px 25px; overflow-y: auto; }
+
+        .sg-section { margin-bottom: 20px; background: var(--glass-bg); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden; }
+        .sg-title { font-size: 1em; color: #000; background: linear-gradient(90deg, var(--secondary-color), var(--accent-color)); padding: 10px 15px; margin: 0; font-weight: bold; }
+        .resource-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+        .resource-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 10px; padding: 10px 12px; }
+        .resource-title { font-weight: 500; color: #e0f7fa; font-size: 0.9em; flex: 1; margin-right: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .resource-meta { font-size: 0.75em; color: var(--text-light); display: flex; gap: 10px; margin-top: 5px; }
+        .magnet-btn { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: bold; }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,0.95); border: 1px solid var(--primary-color); color: var(--primary-color); padding: 12px 25px; border-radius: 30px; z-index: 2000; display: none; font-weight: bold; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .loading { text-align: center; font-size: 1.1em; color: var(--primary-color); padding: 40px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--glass-border); }
+            .main-content { margin-left: 0; padding: 15px; }
+            .day-nav { flex-direction: row; overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>Sorani</h2></div>
+        <nav class="day-nav" id="dayNav"></nav>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="header-text">
+                <h1>青空次元动漫放送数据面板</h1>
+                <p class="header-sub">Weekly Schedule & Subtitle Updates</p>
+                <p id="lastSync" style="font-size: 0.7em; color: var(--accent-color); margin-top: 5px; opacity: 0.8;"></p>
+            </div>
+            <button class="refresh-btn" onclick="fetchData()">🔄 刷新数据</button>
+        </header>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all" onclick="filterCards('all')">全部</button>
+            <button class="filter-btn" data-filter="broadcasted" onclick="filterCards('broadcasted')">已放送</button>
+            <button class="filter-btn" data-filter="unbroadcasted" onclick="filterCards('unbroadcasted')">未放送</button>
+            <button class="filter-btn" data-filter="upcoming" onclick="filterCards('upcoming')">待放送</button>
+        </div>
+
+        <div id="app"><div class="loading">正在同步云端数据...</div></div>
+    </main>
+
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">资源列表</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentAnimeId = null;
+        let currentAnimeUpdateTime = null;
+
+        const dayMapNames = { 'monday': '周一', 'tuesday': '周二', 'wednesday': '周三', 'thursday': '周四', 'friday': '周五', 'saturday': '周六', 'sunday': '周日', 'recent': '近期上映' };
+        const currentDayMapping = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
+
+        function getCurrentDayKey() {
+            const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+            let day = now.getDay();
+            if (now.getHours() < 4) day = day === 0 ? 6 : day - 1;
+            return currentDayMapping[day];
+        }
+
+        function getBroadcastStatus(dayKey, timeStr) {
+            if (!timeStr || !timeStr.includes(':') || dayKey === 'recent') return null;
+            const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+            const [h, m] = timeStr.split(':').map(Number);
+            const currentDay = now.getDay() === 0 ? 7 : now.getDay();
+            const dayToNum = { 'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7 };
+            const iDay = dayToNum[dayKey];
+            let passed = false;
+            if (currentDay > iDay) passed = true;
+            else if (currentDay === iDay) {
+                if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) passed = true;
+            }
+            return passed ? { text: '已放送', class: 'status-broadcasted' } : { text: '未放送', class: 'status-unbroadcasted' };
+        }
+
+        // 标记更新已读
+        function markUpdateRead() {
+            if (currentAnimeId && currentAnimeUpdateTime) {
+                localStorage.setItem(`read_${currentAnimeId}`, currentAnimeUpdateTime);
+                // 立即更新当前卡片 UI
+                const ribbon = document.querySelector(`.card[data-anime-id="${currentAnimeId}"] .card-new-ribbon`);
+                if (ribbon) ribbon.style.display = 'none';
+            }
+        }
+
+        async function fetchData() {
+            const app = document.getElementById('app');
+            if (app.innerHTML.includes('loading')) app.innerHTML = '<div class="loading">正在同步数据...</div>';
+            try {
+                const res = await fetch('/api/schedule');
+                const result = await res.json();
+                if (result.success) {
+                    renderData(result.data);
+                    document.getElementById('lastSync').innerText = `最后同步: ${new Date().toLocaleTimeString()}`;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderData(data) {
+            const app = document.getElementById('app');
+            const nav = document.getElementById('dayNav');
+            app.innerHTML = nav.innerHTML = '';
+            const today = getCurrentDayKey();
+
+            Object.keys(dayMapNames).forEach(key => {
+                const navBtn = document.createElement('a');
+                navBtn.className = 'day-nav-btn' + (key === today ? ' active' : '');
+                navBtn.href = `#section-${key}`;
+                navBtn.innerHTML = `<span>${dayMapNames[key]}</span>`;
+                navBtn.onclick = (e) => { e.preventDefault(); document.getElementById(`section-${key}`).scrollIntoView({ behavior: 'smooth' }); };
+                nav.appendChild(navBtn);
+
+                const section = document.createElement('div');
+                section.className = 'day-section';
+                section.id = `section-${key}`;
+                section.innerHTML = `<h2 class="day-title">${dayMapNames[key]}${key === today ? ' (今天)' : ''}</h2>`;
+                const grid = document.createElement('div');
+                grid.className = 'grid';
+
+                (data[key] || []).forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    const b = getBroadcastStatus(key, item.time);
+                    const animeId = item.subtitleUpdates ? item.subtitleUpdates.id : item.title;
+                    card.dataset.animeId = animeId;
+                    card.dataset.status = b ? (b.text === '已放送' ? 'broadcasted' : 'unbroadcasted') : 'upcoming';
+                    if (b) card.classList.add(b.text === '已放送' ? 'is-broadcasted' : 'is-unbroadcasted');
+
+                    // 检查已读逻辑
+                    let showRibbon = false;
+                    if (item.subtitleUpdates) {
+                        const lastReadTime = localStorage.getItem(`read_${animeId}`);
+                        if (lastReadTime !== item.subtitleUpdates.updateTime) {
+                            showRibbon = true;
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <div class="card-new-ribbon" style="display: ${showRibbon ? 'block' : 'none'}"><span>NEW</span></div>
+                        <div class="card-img-wrapper">
+                            <span class="source-tag">${item.source === 'anibk' ? 'AniBK' : 'Mikan'}</span>
+                            <img src="${item.img || ''}" class="card-img" onerror="this.src='https://via.placeholder.com/300x400'">
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title" onclick="copyText('${item.title.replace(/'/g, "\\'")}', '已复制名称')">${item.title}</h3>
+                            <div class="card-info">
+                                <span>${item.ep || ''}</span>
+                                <div class="time-container">
+                                    <span class="card-time">${item.time || ''}</span>
+                                    ${b ? `<span class="time-status ${b.class}">${b.text}</span>` : ''}
+                                </div>
+                            </div>
+                            ${item.subtitleUpdates ? `
+                                <div class="status-badge clickable" onclick="openSubgroups('${item.subtitleUpdates.id}', '${item.title.replace(/'/g, "\\'")}', '${item.subtitleUpdates.updateTime}')">
+                                    <div style="font-weight:bold">字幕组已更新 (+${item.subtitleUpdates.count})</div>
+                                    <small>${item.subtitleUpdates.updateTime}</small>
+                                </div>` : '<div class="status-badge no-update">暂无更新</div>'}
+                        </div>`;
+                    grid.appendChild(card);
+                });
+                section.appendChild(grid);
+                app.appendChild(section);
+            });
+            filterCards(document.querySelector('.filter-btn.active').dataset.filter);
+        }
+
+        async function openSubgroups(id, title, updateTime) {
+            currentAnimeId = id;
+            currentAnimeUpdateTime = updateTime;
+            document.getElementById('modalTitle').innerText = title;
+            const body = document.getElementById('modalBody');
+            document.getElementById('detailModal').style.display = 'flex';
+            body.innerHTML = '<div class="loading">加载中...</div>';
+            try {
+                const res = await fetch(`/api/subtitles/${id}`);
+                const result = await res.json();
+                if (result.success && result.data.length) {
+                    let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><label style="color:var(--primary-color);font-weight:bold;cursor:pointer;"><input type="checkbox" onchange="toggleAllMagnets(this)"> 全选</label><button class="magnet-btn" style="background:#4caf50;color:white;" onclick="copySelected()">复制选中</button></div>`;
+                    result.data.forEach(group => {
+                        html += `<div class="sg-section"><h4 class="sg-title">${group.groupName}</h4><div class="resource-list">`;
+                        group.resources.forEach(r => {
+                            html += `<div class="resource-item"><input type="checkbox" class="magnet-checkbox" value="${r.magnet.trim()}" style="margin-right:15px;"><div style="flex:1;min-width:0;"><div class="resource-title">${r.title}</div><div class="resource-meta"><span>💾 ${r.size}</span> <span>🕒 ${r.time}</span></div></div><button class="magnet-btn" onclick="copyText('${r.magnet.trim()}', '已复制磁力')">复制</button></div>`;
+                        });
+                        html += `</div></div>`;
+                    });
+                    body.innerHTML = html;
+                } else body.innerHTML = '暂无详情';
+            } catch (e) { body.innerHTML = '加载失败'; }
+        }
+
+        function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+        function toggleAllMagnets(cb) { document.querySelectorAll('.magnet-checkbox').forEach(c => c.checked = cb.checked); }
+        function copySelected() {
+            const checks = document.querySelectorAll('.magnet-checkbox:checked');
+            if (!checks.length) return copyText('', '请先选择', true);
+            copyText(Array.from(checks).map(c => c.value.trim()).join('\r\n\r\n'), `已复制 ${checks.length} 条磁力`);
+            markUpdateRead();
+        }
+
+        function copyText(text, msg, isErr = false) {
+            if (text) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text; document.body.appendChild(textArea); textArea.select();
+                document.execCommand('copy'); document.body.removeChild(textArea);
+                if (text.startsWith('magnet:')) markUpdateRead();
+            }
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.style.display = 'block'; t.style.background = isErr ? 'rgba(255,82,82,0.95)' : 'rgba(20,20,20,0.95)';
+            setTimeout(() => t.style.display = 'none', 2000);
+        }
+
+        function filterCards(type) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === type));
+            document.querySelectorAll('.day-section').forEach(s => {
+                let has = false;
+                s.querySelectorAll('.card').forEach(c => {
+                    const v = type === 'all' || c.dataset.status === type;
+                    c.style.display = v ? 'flex' : 'none';
+                    if (v) has = true;
+                });
+                s.style.display = has ? 'block' : 'none';
+            });
+        }
+
+        window.onclick = (e) => { if (e.target.id === 'detailModal') closeModal(); };
+        fetchData();
+        setInterval(fetchData, 180000);
+    </script>
+</body>
+</html>
