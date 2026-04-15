@@ -46,6 +46,7 @@
         }
         @keyframes blob { 0% { transform: translate(0,0); } 100% { transform: translate(20px, -20px); } }
 
+        /* 公告栏 */
         .announcement-bar {
             position: fixed; top: 0; left: var(--sidebar-width); right: 0; height: 35px;
             background: rgba(212, 175, 55, 0.1); backdrop-filter: blur(10px);
@@ -57,7 +58,7 @@
             padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 2;
         }
         .announcement-content {
-            display: inline-block; padding-left: 100%; animation: ticker 30s linear infinite;
+            display: inline-block; padding-left: 100%; animation: ticker 100s linear infinite;
             font-size: 0.85em; color: var(--accent-color);
         }
         @keyframes ticker {
@@ -65,6 +66,7 @@
             100% { transform: translateX(-100%); }
         }
 
+        /* 侧边栏 */
         .sidebar {
             width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0;
             background: var(--glass-bg); backdrop-filter: blur(24px); border-right: 1px solid var(--glass-border);
@@ -85,16 +87,12 @@
             box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
         }
         .day-nav-btn.active::after {
-            content: '◀'; position: absolute; right: 10px; color: #000;
-            font-size: 1em; opacity: 0.5;
-            animation: arrowFloat 2s infinite ease-in-out;
+            content: '◀'; position: absolute; right: 10px; color: #000; font-size: 1em; opacity: 0.5; animation: arrowFloat 2s infinite ease-in-out;
         }
         @keyframes arrowFloat { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-3px); } }
-        .today-tag {
-            font-size: 0.6em; margin-left: 8px; background: rgba(0, 0, 0, 0.15);
-            padding: 2px 8px; border-radius: 10px; font-weight: 900; text-transform: uppercase;
-        }
+        .today-tag { font-size: 0.6em; margin-left: 8px; background: rgba(0, 0, 0, 0.15); padding: 2px 8px; border-radius: 10px; font-weight: 900; }
 
+        /* 主体布局 */
         .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 60px 30px 25px 30px; max-width: calc(100vw - var(--sidebar-width)); box-sizing: border-box; }
 
         header {
@@ -104,167 +102,103 @@
         .header-text h1 { margin: 0; font-size: 2.2em; font-family: var(--font-serif); font-weight: 900; font-style: italic; }
         .header-sub { font-size: 0.8em; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-light); margin-top: 5px; }
 
+        /* 通知中心 */
         .header-actions { display: flex; align-items: center; gap: 20px; }
         .notif-wrapper { position: relative; z-index: 2000; }
-        .notif-trigger { cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); transition: 0.3s; }
+        .notif-trigger { cursor: pointer; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); transition: 0.3s; }
         .notif-trigger:hover { background: rgba(255,255,255,0.08); border-color: var(--primary-color); }
         .notif-icon-svg { width: 26px; height: 26px; fill: var(--text-light); transition: 0.3s; }
         .notif-trigger:hover .notif-icon-svg { fill: var(--primary-color); transform: rotate(15deg); }
         
-        .notif-badge {
-            position: absolute; top: 10px; right: 10px; width: 8px; height: 8px;
-            background: #ff5252; border-radius: 50%; display: none;
-            box-shadow: 0 0 10px #ff5252; pointer-events: none;
-        }
+        .notif-badge { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #ff5252; border-radius: 50%; display: none; box-shadow: 0 0 10px #ff5252; pointer-events: none; }
         .notif-panel {
-            position: absolute; top: 50px; right: 0; width: 320px; max-height: 480px;
+            position: absolute; top: 55px; right: 0; width: 340px; max-height: 500px;
             background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(30px);
             border: 1px solid var(--glass-border); border-radius: 1.5rem; display: none;
             flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.8); overflow: hidden;
-            animation: slideDown 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-            z-index: 3000;
+            animation: slideDown 0.3s cubic-bezier(0.19, 1, 0.22, 1); z-index: 3000;
         }
         @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .notif-panel-header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); font-weight: bold; color: var(--primary-color); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
-        .notif-list { overflow-y: auto; flex: 1; }
-        .notif-item { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
-        .notif-item:hover { background: rgba(255,255,255,0.05); }
-        .notif-item-title { font-size: 0.85em; font-weight: bold; margin-bottom: 4px; color: #fff; line-height: 1.4; }
-        .notif-item-meta { font-size: 0.75em; color: var(--text-light); display: flex; justify-content: space-between; }
+        .notif-list { overflow-y: auto; flex: 1; padding: 10px; }
+        .notif-item { padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; transition: 0.3s; display: flex; flex-direction: column; gap: 8px; }
+        .notif-item:hover { background: rgba(212, 175, 55, 0.05); border-color: rgba(212, 175, 55, 0.2); }
+        .notif-header { display: flex; align-items: center; gap: 8px; }
+        .notif-badge-type { font-size: 0.65em; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        .badge-anime { background: rgba(212, 175, 55, 0.2); color: var(--primary-color); border: 1px solid var(--primary-color); }
+        .badge-group { background: rgba(76, 175, 80, 0.2); color: #81c784; border: 1px solid #81c784; }
+        .notif-item-title { font-size: 0.85em; font-weight: bold; color: #fff; line-height: 1.4; flex: 1; }
+        .notif-item-details { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; font-size: 0.75em; }
+        .notif-ep { color: var(--accent-color); font-weight: 900; }
+        .notif-group-name { color: var(--text-light); font-style: italic; }
+        .notif-time { color: var(--text-light); opacity: 0.5; font-size: 0.85em; }
         .notif-empty { padding: 40px; text-align: center; color: var(--text-light); font-size: 0.85em; opacity: 0.6; }
 
-        .sound-select-wrap {
-            padding: 10px 15px; background: rgba(212, 175, 55, 0.05);
-            border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 10px;
-        }
-        .sound-select-wrap label { font-size: 0.75em; color: var(--accent-color); font-weight: bold; }
-        .sound-select {
-            background: #111; color: var(--primary-color); border: 1px solid var(--glass-border);
-            border-radius: 6px; font-size: 0.75em; padding: 4px 8px; outline: none; cursor: pointer; flex: 1;
-        }
+        .sound-select-wrap { padding: 12px 15px; background: rgba(212, 175, 55, 0.05); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 10px; }
+        .sound-select { background: #111; color: var(--primary-color); border: 1px solid var(--glass-border); border-radius: 6px; font-size: 0.75em; padding: 4px 8px; outline: none; cursor: pointer; flex: 1; }
 
-        .filter-bar { 
-            display: inline-flex; 
-            gap: 12px; 
-            margin-bottom: 25px; 
-            padding: 8px 15px; 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(24px); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 50px; 
-            overflow-x: auto;
-            max-width: 100%;
-        }
-        .filter-btn { background: transparent; color: var(--text-light); border: 1px solid var(--glass-border); padding: 8px 20px; border-radius: 18px; font-weight: bold; font-size: 0.85em; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
+        /* 筛选与卡片 */
+        .filter-bar { display: inline-flex; gap: 12px; margin-bottom: 25px; padding: 8px 15px; background: var(--glass-bg); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); border-radius: 50px; overflow-x: auto; max-width: 100%; }
+        .filter-btn { background: transparent; color: var(--text-light); border: 1px solid var(--glass-border); padding: 8px 20px; border-radius: 18px; font-weight: bold; font-size: 0.85em; cursor: pointer; transition: 0.3s; white-space: nowrap; }
         .filter-btn.active { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; }
 
         .refresh-btn { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; border: none; padding: 10px 24px; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
-        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .refresh-btn:disabled { opacity: 0.5; }
         .spinning { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .day-section { margin-bottom: 40px; scroll-margin-top: 80px; }
         .day-title { color: var(--primary-color); background: var(--glass-bg); padding: 8px 18px; border-radius: 10px; font-family: var(--font-serif); font-style: italic; display: inline-block; margin-bottom: 25px; }
-
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }
-
-        .card {
-            background: var(--glass-bg); backdrop-filter: blur(24px); border-radius: 2rem; overflow: hidden;
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; border: 1px solid var(--glass-border); position: relative;
-            min-height: 420px;
-        }
+        
+        .card { background: var(--glass-bg); backdrop-filter: blur(24px); border-radius: 2rem; overflow: hidden; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; border: 1px solid var(--glass-border); position: relative; min-height: 420px; }
         .card:hover { transform: translateY(-8px); background: rgba(255,255,255,0.06); border-color: rgba(212, 175, 55, 0.3); }
-
         .card-img-wrapper { position: relative; width: 100%; height: 280px; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; }
         .card-img { width: 100%; height: 100%; object-fit: cover; transition: 0.8s; }
         .card:hover .card-img { transform: scale(1.1); }
 
-        .card.is-unbroadcasted { 
-            border-color: var(--primary-color);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
-        }
-        .card.is-unbroadcasted .card-time { 
-            color: var(--accent-color); 
-            text-shadow: 0 0 10px var(--primary-color);
-            font-size: 1.2em;
-        }
-        .card.is-unbroadcasted .time-status {
-            background: var(--broadcasted-bg);
-            color: var(--broadcasted-text);
-            animation: pulse-glow 2s infinite;
-        }
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(0.95); }
-        }
-
-        .card.is-broadcasted { 
-            opacity: 0.6;
-            filter: grayscale(0.8);
-            border-color: transparent;
-        }
-        .card.is-broadcasted:hover {
-            filter: grayscale(0.3);
-            opacity: 1;
-        }
-        .card.is-broadcasted .card-time {
-            color: var(--text-light);
-            text-shadow: none;
-        }
-        .card.is-broadcasted .time-status {
-            background: rgba(255,255,255,0.05);
-            color: var(--text-light);
-        }
+        /* 卡片状态样式 */
+        .card.is-unbroadcasted { border-color: var(--primary-color); box-shadow: 0 0 15px rgba(212, 175, 55, 0.1); }
+        .card.is-unbroadcasted .card-time { color: var(--accent-color); text-shadow: 0 0 10px var(--primary-color); font-size: 1.2em; }
+        .card.is-unbroadcasted .time-status { background: var(--broadcasted-bg); color: var(--broadcasted-text); animation: pulse-glow 2s infinite; }
+        .card.is-broadcasted { opacity: 0.6; filter: grayscale(0.8); }
+        .card.is-broadcasted:hover { filter: grayscale(0.3); opacity: 1; }
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(0.95); } }
 
         .card-content { padding: 18px; display: flex; flex-direction: column; flex-grow: 1; gap: 8px; }
         .card-title { font-size: 1em; font-weight: bold; color: var(--primary-color); cursor: pointer; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.8em; line-height: 1.4; margin-bottom: 5px; }
         .card-info { font-size: 0.85em; color: var(--text-light); display: flex; justify-content: space-between; align-items: center; min-height: 24px; }
-        .card-time { font-size: 1.1em; font-weight: 900; font-family: var(--font-serif); color: var(--primary-color); transition: 0.3s; }
+        .card-time { font-size: 1.1em; font-weight: 900; font-family: var(--font-serif); color: var(--primary-color); }
         .time-status { font-size: 0.7em; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--glass-border); margin-left: 8px; font-weight: bold; }
 
-        .card-new-ribbon {
-            position: absolute; top: 0; right: 0; width: 70px; height: 70px; overflow: hidden; z-index: 20; pointer-events: none; display: none;
-        }
-        .card-new-ribbon span {
-            position: absolute; display: block; width: 100px; padding: 4px 0; background: linear-gradient(135deg, #ff5252, #f48fb1);
-            color: #fff; font-size: 10px; font-weight: 900; text-align: center; right: -25px; top: 15px; transform: rotate(45deg);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); animation: pulse-ribbon 2s infinite;
-        }
-        @keyframes pulse-ribbon { 0%, 100% { opacity: 1; transform: rotate(45deg) scale(1); } 50% { opacity: 0.8; transform: rotate(45deg) scale(1.05); } }
-
+        .card-new-ribbon { position: absolute; top: 0; right: 0; width: 70px; height: 70px; overflow: hidden; z-index: 20; pointer-events: none; display: none; }
+        .card-new-ribbon span { position: absolute; display: block; width: 100px; padding: 4px 0; background: linear-gradient(135deg, #ff5252, #f48fb1); color: #fff; font-size: 10px; font-weight: 900; text-align: center; right: -25px; top: 15px; transform: rotate(45deg); box-shadow: 0 2px 5px rgba(0,0,0,0.3); animation: pulse-ribbon 2s infinite; }
         .status-badge { margin-top: auto; background: var(--badge-bg); color: var(--badge-text); padding: 10px; border-radius: 12px; font-size: 0.8em; text-align: center; border: 1px solid var(--glass-border); transition: 0.3s; }
         .status-badge.clickable { cursor: pointer; }
         .status-badge.clickable:hover { background: rgba(255,255,255,0.08); border-color: var(--primary-color); }
-        .status-badge.no-update { color: var(--text-light); opacity: 0.6; }
-
         .source-tag { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); color: var(--primary-color); border: 1px solid var(--primary-color); padding: 3px 10px; border-radius: 6px; font-size: 0.7em; z-index: 10; font-weight: bold; backdrop-filter: blur(5px); }
 
+        /* 弹窗与 Toast */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 4000; justify-content: center; align-items: center; backdrop-filter: blur(12px); }
         .modal-content { background: rgba(10,10,10,0.9); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); width: 95%; max-width: 800px; max-height: 85vh; border-radius: 2rem; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .modal-header { padding: 20px 25px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
-        .modal-title { margin: 0; color: var(--primary-color); font-size: 1.3em; font-family: var(--font-serif); font-weight: bold; }
-        .close-btn { background: rgba(255,255,255,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-light); display: flex; justify-content: center; align-items: center; }
         .modal-body { padding: 20px 25px; overflow-y: auto; }
-
+        .close-btn { background: rgba(255,255,255,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-light); display: flex; justify-content: center; align-items: center; }
         .sg-section { margin-bottom: 20px; background: var(--glass-bg); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden; }
         .sg-title { font-size: 1em; color: #000; background: linear-gradient(90deg, var(--secondary-color), var(--accent-color)); padding: 10px 15px; margin: 0; font-weight: bold; }
         .resource-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
         .resource-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 10px; padding: 10px 12px; }
         .resource-title { font-weight: 500; color: #e0f7fa; font-size: 0.9em; flex: 1; margin-right: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .resource-meta { font-size: 0.75em; color: var(--text-light); display: flex; gap: 10px; margin-top: 5px; }
         .magnet-btn { background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: bold; }
-
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,0.95); border: 1px solid var(--primary-color); color: var(--primary-color); padding: 12px 25px; border-radius: 30px; z-index: 5000; display: none; font-weight: bold; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 25px; border-radius: 30px; z-index: 5000; display: none; font-weight: bold; }
         .loading { text-align: center; font-size: 1.1em; color: var(--primary-color); padding: 40px; }
 
         @media (max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--glass-border); }
+            .sidebar { width: 100%; height: auto; position: relative; border-right: none; }
             .announcement-bar { left: 0; }
             .main-content { margin-left: 0; padding: 50px 15px 15px 15px; }
             .day-nav { flex-direction: row; overflow-x: auto; }
             .header-actions { gap: 10px; }
-            .header-text h1 { font-size: 1.5em; }
             .day-nav-btn { margin: 4px 5px; padding: 8px 15px; }
         }
     </style>
@@ -290,34 +224,16 @@
             <div class="header-actions">
                 <div class="notif-wrapper">
                     <div class="notif-trigger" onclick="toggleNotifPanel(event)">
-                        <svg class="notif-icon-svg" viewBox="0 0 24 24">
-                            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                        </svg>
+                        <svg class="notif-icon-svg" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                         <div class="notif-badge" id="notifBadge"></div>
                     </div>
-                    
                     <div class="notif-panel" id="notifPanel" onclick="event.stopPropagation()">
-                        <div class="notif-panel-header">
-                            <span>更新动态</span>
-                            <span style="font-size: 0.7em; cursor: pointer; color: var(--text-light)" onclick="clearNotifs(event)">全部已读</span>
-                        </div>
-                        <div class="sound-select-wrap">
-                            <label>提示音:</label>
-                            <select class="sound-select" id="soundSelect" onchange="changeSound(this.value)">
-                                <option value="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3">默认音效</option>
-                                <option value="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3">清脆铃声</option>
-                                <option value="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3">和弦提示</option>
-                                <option value="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3">动漫短促</option>
-                            </select>
-                        </div>
-                        <div class="notif-list" id="notifList">
-                            <div class="notif-empty">暂无新动态</div>
-                        </div>
+                        <div class="notif-panel-header"><span>更新动态</span><span style="font-size: 0.7em; cursor: pointer; opacity: 0.6;" onclick="clearNotifs(event)">全部已读</span></div>
+                        <div class="sound-select-wrap"><label>提示音:</label><select class="sound-select" id="soundSelect" onchange="changeSound(this.value)"><option value="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3">默认音效</option><option value="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3">清脆铃声</option><option value="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3">和弦提示</option><option value="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3">动漫短促</option></select></div>
+                        <div class="notif-list" id="notifList"><div class="notif-empty">暂无新动态</div></div>
                     </div>
                 </div>
-                <button class="refresh-btn" id="refreshBtn" onclick="fetchData(true)">
-                    <span id="refreshIcon">🔄</span> 刷新数据
-                </button>
+                <button class="refresh-btn" id="refreshBtn" onclick="fetchData(true)"><span id="refreshIcon">🔄</span> 刷新数据</button>
             </div>
         </header>
 
@@ -327,146 +243,106 @@
             <button class="filter-btn" data-filter="unbroadcasted" onclick="filterCards('unbroadcasted')">未放送</button>
             <button class="filter-btn" data-filter="upcoming" onclick="filterCards('upcoming')">待放送</button>
         </div>
-
-        <div id="app"><div class="loading">正在同步云端数据...</div></div>
+        <div id="app"><div class="loading">正在加载数据...</div></div>
     </main>
 
-    <div class="modal-overlay" id="detailModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">资源列表</h3>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
-        </div>
-    </div>
+    <div class="modal-overlay" id="detailModal"><div class="modal-content"><div class="modal-header"><h3 id="modalTitle" style="color:var(--primary-color);margin:0;">资源列表</h3><button class="close-btn" onclick="closeModal()">&times;</button></div><div class="modal-body" id="modalBody"></div></div></div>
     <div class="toast" id="toast"></div>
-
-    <audio id="updateSound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="updateSound" preload="auto"><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- 核心变量声明 ---
-        let currentAnimeId = null;
-        let currentAnimeUpdateTime = null;
-        let previousDataState = null; 
-        let notificationHistory = [];
-
+        let currentAnimeId = null, currentAnimeUpdateTime = null, previousDataState = null, notificationHistory = [];
         const dayMapNames = { 'monday': '周一', 'tuesday': '周二', 'wednesday': '周三', 'thursday': '周四', 'friday': '周五', 'saturday': '周六', 'sunday': '周日', 'recent': '最新上映（近期）' };
         const currentDayMapping = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday' };
 
-        // --- 初始化 ---
         const savedSound = localStorage.getItem('notifSound');
         if (savedSound) {
-            document.getElementById('updateSound').src = savedSound;
-            const select = document.getElementById('soundSelect');
-            if (select) select.value = savedSound;
+            const s = document.getElementById('updateSound'); if (s) s.src = savedSound;
+            const sl = document.getElementById('soundSelect'); if (sl) sl.value = savedSound;
         }
 
         const socket = io();
         socket.on('new_update', (updates) => {
             triggerUpdateAlert(updates);
-            const announcementText = updates.map(u => `【新更新】${u.title} (${u.subtitleUpdates.updateTime})`).join('  |  ');
-            document.getElementById('announcementText').innerText = announcementText;
+            const msg = updates.map(u => `【新更新】${u.title} (第 ${u.episode} 集 - ${u.groupName})`).join('  |  ');
+            const el = document.getElementById('announcementText'); if (el) el.innerText = msg;
             fetchData(false);
         });
 
         function changeSound(val) {
-            const sound = document.getElementById('updateSound');
-            sound.src = val;
-            localStorage.setItem('notifSound', val);
-            sound.currentTime = 0;
-            sound.play().catch(e => {});
-            showNotification("提示音已切换并试听中...");
+            const s = document.getElementById('updateSound');
+            if (s) { s.src = val; localStorage.setItem('notifSound', val); s.currentTime = 0; s.play().catch(e => {}); showNotification("音效已切换并试听中..."); }
         }
 
         function toggleNotifPanel(e) {
             e.stopPropagation();
-            const panel = document.getElementById('notifPanel');
-            const isVisible = panel.style.display === 'flex';
-            panel.style.display = isVisible ? 'none' : 'flex';
-            if (!isVisible) document.getElementById('notifBadge').style.display = 'none';
+            const p = document.getElementById('notifPanel');
+            if (!p) return;
+            const visible = p.style.display === 'flex';
+            p.style.display = visible ? 'none' : 'flex';
+            if (!visible) { const b = document.getElementById('notifBadge'); if (b) b.style.display = 'none'; }
         }
 
         function clearNotifs(e) {
-            e.stopPropagation();
-            notificationHistory = [];
-            updateNotifList();
-            document.getElementById('notifBadge').style.display = 'none';
+            if (e) e.stopPropagation();
+            notificationHistory = []; updateNotifList();
+            const b = document.getElementById('notifBadge'); if (b) b.style.display = 'none';
         }
 
         function updateNotifList() {
             const list = document.getElementById('notifList');
-            if (notificationHistory.length === 0) {
-                list.innerHTML = '<div class="notif-empty">暂无新动态</div>';
-                return;
-            }
+            if (!list) return;
+            if (notificationHistory.length === 0) { list.innerHTML = '<div class="notif-empty">暂无新动态</div>'; return; }
             list.innerHTML = notificationHistory.map(item => `
                 <div class="notif-item">
-                    <div class="notif-item-title">${item.title}</div>
-                    <div class="notif-item-meta">
-                        <span style="color: var(--primary-color)">已更新: ${item.subtitleUpdates.count}</span>
-                        <span>${item.subtitleUpdates.updateTime}</span>
+                    <div class="notif-header"><span class="notif-badge-type badge-anime">番剧</span><div class="notif-item-title">${item.title}</div></div>
+                    <div class="notif-item-details">
+                        <div><span class="notif-ep">第 ${item.episode || '1'} 集</span><span style="margin:0 5px;opacity:0.3">|</span><span class="notif-badge-type badge-group" style="font-size:0.9em">组</span><span class="notif-group-name">${item.groupName || '最新资源'}</span></div>
+                        <div class="notif-time">${item.subtitleUpdates ? item.subtitleUpdates.updateTime : ''}</div>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
 
         function checkForUpdates(newData) {
-            if (!previousDataState || !newData) {
-                previousDataState = JSON.parse(JSON.stringify(newData));
-                return;
-            }
-            let updatesFound = [];
+            if (!previousDataState || !newData) { previousDataState = JSON.parse(JSON.stringify(newData)); return; }
+            let found = [];
             Object.keys(newData).forEach(day => {
                 newData[day].forEach(item => {
                     if (item.subtitleUpdates) {
-                        const oldDayData = previousDataState[day] || [];
-                        const oldItem = oldDayData.find(old => old.title === item.title);
-                        if (!oldItem || !oldItem.subtitleUpdates || oldItem.subtitleUpdates.updateTime !== item.subtitleUpdates.updateTime) {
-                            updatesFound.push(item);
-                        }
+                        const oldItem = (previousDataState[day] || []).find(o => o.title === item.title);
+                        if (!oldItem || !oldItem.subtitleUpdates || oldItem.subtitleUpdates.updateTime !== item.subtitleUpdates.updateTime) found.push(item);
                     }
                 });
             });
-            if (updatesFound.length > 0) triggerUpdateAlert(updatesFound);
+            if (found.length > 0) triggerUpdateAlert(found);
             previousDataState = JSON.parse(JSON.stringify(newData));
         }
 
         function triggerUpdateAlert(updates) {
-            const sound = document.getElementById('updateSound');
-            if (sound) {
-                sound.currentTime = 0;
-                sound.play().catch(e => {});
-            }
+            const s = document.getElementById('updateSound');
+            if (s) { s.currentTime = 0; s.play().catch(e => {}); }
             updates.forEach(item => {
                 if (!notificationHistory.some(n => n.title === item.title && n.subtitleUpdates.updateTime === item.subtitleUpdates.updateTime)) {
                     notificationHistory.unshift(item);
-                    showNotification(`【新更新】${item.title} - ${item.subtitleUpdates.updateTime}`);
+                    showNotification(`【新更新】${item.title} (第 ${item.episode} 集)`);
                 }
             });
-            if (updates.length > 0) {
-                document.getElementById('notifBadge').style.display = 'block';
-                updateNotifList();
-            }
+            if (updates.length > 0) { const b = document.getElementById('notifBadge'); if (b) b.style.display = 'block'; updateNotifList(); }
         }
 
         function showNotification(msg) {
             const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
+            if (!t) return;
+            t.innerText = msg; t.style.display = 'block';
             t.style.background = 'linear-gradient(135deg, var(--primary-color), var(--accent-color))';
-            t.style.color = '#000';
-            t.style.boxShadow = '0 10px 30px rgba(212, 175, 55, 0.3)';
+            t.style.color = '#000'; t.style.boxShadow = '0 10px 30px rgba(212, 175, 55, 0.3)';
             setTimeout(() => t.style.display = 'none', 8000);
         }
 
         function getCurrentDayKey() {
             const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-            let day = now.getDay();
-            if (now.getHours() < 4) day = day === 0 ? 6 : day - 1;
+            let day = now.getDay(); if (now.getHours() < 4) day = day === 0 ? 6 : day - 1;
             return currentDayMapping[day];
         }
 
@@ -479,202 +355,135 @@
             const iDay = dayToNum[dayKey];
             let passed = false;
             if (currentDay > iDay) passed = true;
-            else if (currentDay === iDay) {
-                if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) passed = true;
-            }
+            else if (currentDay === iDay && (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m))) passed = true;
             return passed ? { text: '已放送', class: 'status-broadcasted' } : { text: '未放送', class: 'status-unbroadcasted' };
         }
 
         async function fetchData(force = false) {
             const btn = document.getElementById('refreshBtn');
             const icon = document.getElementById('refreshIcon');
-            if (force) {
-                btn.disabled = true;
-                icon.classList.add('spinning');
-            }
+            if (force && btn) { btn.disabled = true; icon.classList.add('spinning'); }
             try {
                 const res = await fetch(`/api/schedule${force ? '?force=true' : ''}`);
                 const result = await res.json();
                 if (result.success && result.data) {
                     if (!force) checkForUpdates(result.data); 
                     renderData(result.data);
-                    document.getElementById('lastSync').innerText = `最后同步: ${new Date().toLocaleTimeString()} ${result.forced ? '(强制刷新成功)' : ''}`;
+                    const sync = document.getElementById('lastSync');
+                    if (sync) sync.innerText = `最后同步: ${new Date().toLocaleTimeString()} ${result.forced ? '(强制刷新成功)' : ''}`;
                 }
-            } catch (e) { 
-                console.error("Fetch error:", e); 
-            } finally {
-                if (force) {
-                    btn.disabled = false;
-                    icon.classList.remove('spinning');
-                }
-            }
+            } catch (e) { console.error(e); } finally { if (force && btn) { btn.disabled = false; icon.classList.remove('spinning'); } }
         }
 
         function handleImgError(img) {
-            img.onerror = null;
-            img.src = 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?q=80&w=500&auto=format&fit=crop';
+            if (!img) return;
+            img.onerror = null; img.src = 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?q=80&w=500&auto=format&fit=crop';
             img.style.filter = 'grayscale(1) opacity(0.3)';
         }
 
         function renderData(data) {
-            if (!data) return;
-            const app = document.getElementById('app');
-            const nav = document.getElementById('dayNav');
-            app.innerHTML = nav.innerHTML = '';
-            const today = getCurrentDayKey();
-
+            const app = document.getElementById('app'), nav = document.getElementById('dayNav');
+            if (!app || !nav) return;
+            app.innerHTML = nav.innerHTML = ''; const today = getCurrentDayKey();
             Object.keys(dayMapNames).forEach(key => {
                 const navBtn = document.createElement('a');
                 navBtn.className = 'day-nav-btn' + (key === today ? ' active' : '');
                 navBtn.href = `#section-${key}`;
                 navBtn.innerHTML = `<span>${dayMapNames[key]}</span>${key === today ? '<span class="today-tag">TODAY</span>' : ''}`;
-                navBtn.onclick = (e) => { e.preventDefault(); document.getElementById(`section-${key}`).scrollIntoView({ behavior: 'smooth' }); };
+                navBtn.onclick = (e) => { e.preventDefault(); const t = document.getElementById(`section-${key}`); if (t) t.scrollIntoView({ behavior: 'smooth' }); };
                 nav.appendChild(navBtn);
 
                 const section = document.createElement('div');
-                section.className = 'day-section';
-                section.id = `section-${key}`;
+                section.className = 'day-section'; section.id = `section-${key}`;
                 section.innerHTML = `<h2 class="day-title">${dayMapNames[key]}${key === today ? ' (今天)' : ''}</h2>`;
-                const grid = document.createElement('div');
-                grid.className = 'grid';
+                const grid = document.createElement('div'); grid.className = 'grid';
 
                 (data[key] || []).forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    
-                    const b = getBroadcastStatus(key, item.time); // b.text === '已放送' 表示时间已过
-                    const isToday = (key === today);
-                    const hasUpdate = !!item.subtitleUpdates;
-                    const animeId = item.subtitleUpdates ? item.subtitleUpdates.id : item.title;
-                    
-                    card.dataset.animeId = animeId;
-
-                    // --- 核心追踪逻辑 ---
-                    if (key === 'recent') {
-                        // 最新上映板块：始终保持清晰
-                        card.dataset.status = 'recent';
-                    } else if (isToday && b && b.text === '已放送' && hasUpdate) {
-                        // 只有同时满足：今天 + 时间已过 + 字幕组有更新 -> 高亮亮起
-                        card.classList.add('is-unbroadcasted'); 
-                        card.dataset.status = 'active-update';
-                    } else {
-                        // 其余所有情况：非今天、时间没到、或没出资源的 -> 全部变灰
-                        card.classList.add('is-broadcasted');
-                        card.dataset.status = 'inactive';
+                    const card = document.createElement('div'); card.className = 'card';
+                    const b = getBroadcastStatus(key, item.time), isToday = (key === today), hasUpdate = !!item.subtitleUpdates;
+                    if (key !== 'recent') {
+                        if (isToday && b && b.text === '已放送' && hasUpdate) card.classList.add('is-unbroadcasted');
+                        else card.classList.add('is-broadcasted');
                     }
+                    if (key === 'recent') card.dataset.status = 'all';
+                    else if (!b) card.dataset.status = 'upcoming';
+                    else card.dataset.status = b.text === '已放送' ? 'broadcasted' : 'unbroadcasted';
 
                     let showRibbon = false;
                     if (item.subtitleUpdates) {
-                        const lastReadTime = localStorage.getItem(`read_${animeId}`);
-                        if (lastReadTime !== item.subtitleUpdates.updateTime) showRibbon = true;
+                        const lastRead = localStorage.getItem(`read_${item.subtitleUpdates.id || item.title}`);
+                        if (lastRead !== item.subtitleUpdates.updateTime) showRibbon = true;
                     }
 
                     const safeTitle = item.title.replace(/'/g, "\\'");
-
                     card.innerHTML = `
                         <div class="card-new-ribbon" style="display: ${showRibbon ? 'block' : 'none'}"><span>NEW</span></div>
-                        <div class="card-img-wrapper">
-                            <span class="source-tag">${item.source === 'anibk' ? 'AniBK' : 'Mikan'}</span>
-                            <img src="${item.img || ''}" class="card-img" oncontextmenu="return false;" onerror="handleImgError(this)">
-                        </div>
+                        <div class="card-img-wrapper"><span class="source-tag">${item.source === 'anibk' ? 'AniBK' : 'Mikan'}</span><img src="${item.img || ''}" class="card-img" oncontextmenu="return false;" onerror="handleImgError(this)"></div>
                         <div class="card-content">
                             <h3 class="card-title" onclick="copyText('${safeTitle}', '已复制名称')">${item.title}</h3>
-                            <div class="card-info">
-                                <span>${item.ep || ''}</span>
-                                <div class="time-container" style="display:flex;align-items:center;">
-                                    <span class="card-time">${item.time || ''}</span>
-                                    ${b ? `<span class="time-status ${b.class}">${b.text}</span>` : ''}
-                                </div>
-                            </div>
-                            ${item.subtitleUpdates ? `
-                                <div class="status-badge clickable" onclick="openSubgroups('${item.subtitleUpdates.id}', '${safeTitle}', '${item.subtitleUpdates.updateTime}')">
-                                    <div style="font-weight:bold">字幕组已更新 (+${item.subtitleUpdates.count})</div>
-                                    <small>${item.subtitleUpdates.updateTime}</small>
-                                </div>` : '<div class="status-badge no-update">暂无更新</div>'}
+                            <div class="card-info"><span>${item.ep || ''}</span><div class="time-container" style="display:flex;align-items:center;"><span class="card-time">${item.time || ''}</span>${b ? `<span class="time-status ${b.class}">${b.text}</span>` : ''}</div></div>
+                            ${item.subtitleUpdates ? `<div class="status-badge clickable" onclick="openSubgroups('${item.subtitleUpdates.id}', '${safeTitle}', '${item.subtitleUpdates.updateTime}')"><div style="font-weight:bold">字幕组已更新 (+${item.subtitleUpdates.count})</div><small>${item.subtitleUpdates.updateTime}</small></div>` : '<div class="status-badge no-update">暂无更新</div>'}
                         </div>`;
                     grid.appendChild(card);
                 });
-                section.appendChild(grid);
-                app.appendChild(section);
+                section.appendChild(grid); app.appendChild(section);
             });
-            filterCards(document.querySelector('.filter-btn.active').dataset.filter);
+            const activeFilter = document.querySelector('.filter-btn.active');
+            if (activeFilter) filterCards(activeFilter.dataset.filter);
         }
 
         async function openSubgroups(id, title, updateTime) {
-            currentAnimeId = id;
-            currentAnimeUpdateTime = updateTime;
+            currentAnimeId = id; currentAnimeUpdateTime = updateTime;
             document.getElementById('modalTitle').innerText = title;
             const body = document.getElementById('modalBody');
             document.getElementById('detailModal').style.display = 'flex';
-            body.innerHTML = '<div class="loading">加载中...</div>';
-            try {
-                const res = await fetch(`/api/subtitles/${id}`);
-                const result = await res.json();
-                if (result.success && result.data.length) {
-                    let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><label style="color:var(--primary-color);font-weight:bold;cursor:pointer;"><input type="checkbox" onchange="toggleAllMagnets(this)"> 全选</label><button class="magnet-btn" style="background:#4caf50;color:white;" onclick="copySelected()">复制选中</button></div>`;
-                    result.data.forEach(group => {
-                        html += `<div class="sg-section"><h4 class="sg-title">${group.groupName}</h4><div class="resource-list">`;
-                        group.resources.forEach(r => {
-                            html += `<div class="resource-item"><input type="checkbox" class="magnet-checkbox" value="${r.magnet.trim()}" style="margin-right:15px;"><div style="flex:1;min-width:0;"><div class="resource-title">${r.title}</div><div class="resource-meta"><span>💾 ${r.size}</span> <span>🕒 ${r.time}</span></div></div><button class="magnet-btn" onclick="copyText('${r.magnet.trim()}', '已复制磁力')">复制</button></div>`;
+            if (body) {
+                body.innerHTML = '<div class="loading">加载中...</div>';
+                try {
+                    const res = await fetch(`/api/subtitles/${id}`);
+                    const result = await res.json();
+                    if (result.success && result.data.length) {
+                        let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><label style="color:var(--primary-color);font-weight:bold;"><input type="checkbox" onchange="toggleAllMagnets(this)"> 全选</label><button class="magnet-btn" style="background:#4caf50;color:white;" onclick="copySelected()">复制选中</button></div>`;
+                        result.data.forEach(group => {
+                            html += `<div class="sg-section"><h4 class="sg-title">${group.groupName}</h4><div class="resource-list">`;
+                            group.resources.forEach(r => {
+                                html += `<div class="resource-item"><input type="checkbox" class="magnet-checkbox" value="${r.magnet.trim()}"><div style="flex:1;min-width:0;margin:0 10px;"><div class="resource-title">${r.title}</div></div><button class="magnet-btn" onclick="copyText('${r.magnet.trim()}', '已复制磁力')">复制</button></div>`;
+                            });
+                            html += `</div></div>`;
                         });
-                        html += `</div></div>`;
-                    });
-                    body.innerHTML = html;
-                } else body.innerHTML = '暂无详情';
-            } catch (e) { body.innerHTML = '加载失败'; }
+                        body.innerHTML = html;
+                    } else body.innerHTML = '暂无详情';
+                } catch (e) { body.innerHTML = '加载失败'; }
+            }
         }
 
-        function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+        function closeModal() { const m = document.getElementById('detailModal'); if (m) m.style.display = 'none'; }
         function toggleAllMagnets(cb) { document.querySelectorAll('.magnet-checkbox').forEach(c => c.checked = cb.checked); }
         function copySelected() {
             const checks = document.querySelectorAll('.magnet-checkbox:checked');
-            if (!checks.length) return copyText('', '请先选择', true);
-            copyText(Array.from(checks).map(c => c.value.trim()).join('\r\n\r\n'), `已复制 ${checks.length} 条磁力`);
+            if (!checks.length) return showNotification("请先选择资源");
+            copyText(Array.from(checks).map(c => c.value.trim()).join('\n\n'), `已复制 ${checks.length} 条磁力`);
             markUpdateRead();
         }
 
         function markUpdateRead() {
             if (currentAnimeId && currentAnimeUpdateTime) {
                 localStorage.setItem(`read_${currentAnimeId}`, currentAnimeUpdateTime);
-                const ribbon = document.querySelector(`.card[data-anime-id="${currentAnimeId}"] .card-new-ribbon`);
-                if (ribbon) ribbon.style.display = 'none';
+                const r = document.querySelector(`.card[data-anime-id="${currentAnimeId}"] .card-new-ribbon`);
+                if (r) r.style.display = 'none';
             }
         }
 
-        async function copyText(text, msg, isErr = false) {
+        async function copyText(text, msg) {
             if (text) {
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        await navigator.clipboard.writeText(text);
-                    } else {
-                        throw new Error('Clipboard API unavailable');
-                    }
-                } catch (err) {
-                    const textArea = document.createElement("textarea");
-                    textArea.value = text;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-9999px';
-                    textArea.style.top = '0';
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
+                try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); } else { throw new Error(); } } catch (e) {
+                    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+                    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
                 }
                 if (text.startsWith('magnet:')) markUpdateRead();
             }
             const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            if (isErr) {
-                t.style.background = 'rgba(255, 82, 82, 0.95)';
-                t.style.color = '#fff';
-            } else {
-                t.style.background = 'rgba(30, 30, 30, 0.98)';
-                t.style.color = 'var(--primary-color)';
-            }
-            t.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-            setTimeout(() => t.style.display = 'none', 2000);
+            if (t) { t.innerText = msg; t.style.display = 'block'; t.style.background = 'rgba(30, 30, 30, 0.98)'; t.style.color = 'var(--primary-color)'; t.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; setTimeout(() => t.style.display = 'none', 2000); }
         }
 
         function filterCards(type) {
@@ -683,8 +492,7 @@
                 let has = false;
                 s.querySelectorAll('.card').forEach(c => {
                     const v = type === 'all' || c.dataset.status === type;
-                    c.style.display = v ? 'flex' : 'none';
-                    if (v) has = true;
+                    c.style.display = v ? 'flex' : 'none'; if (v) has = true;
                 });
                 s.style.display = has ? 'block' : 'none';
             });
@@ -697,7 +505,7 @@
         };
 
         fetchData();
-        setInterval(() => fetchData(false), 300000);
+        setInterval(() => fetchData(false), 180000);
     </script>
 </body>
 </html>

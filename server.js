@@ -70,6 +70,26 @@ async function scrapeAll() {
         const allMikanItems = [];
         dayKeys.forEach(k => data[k] = []);
 
+        const recentUpdatesMap = new Map();
+        if (mikanClassicRes && mikanClassicRes.data) {
+            const $classic = cheerio.load(mikanClassicRes.data);
+            $classic('.table-striped tbody tr').each((i, el) => {
+                if (i > 50) return; 
+                const $tds = $classic(el).find('td'); 
+                const groupName = $tds.eq(1).find('a').text().trim() || "未知字幕组";
+                const fullTitle = $tds.eq(2).find('a.magnet-link-wrap').text().trim();
+                const animeId = $tds.eq(2).find('a.magnet-link-wrap').attr('href')?.split('/').pop();
+                
+                // 尝试从标题中提取集数，如 [01], EP01, 第1话 等
+                const epMatch = fullTitle.match(/\[(\d+)\]|第(\d+)[话集]|EP(\d+)|-(\s*)(\d+)/i);
+                const episode = epMatch ? (epMatch[1] || epMatch[2] || epMatch[3] || epMatch[5]) : "新";
+
+                if (animeId && !recentUpdatesMap.has(animeId)) {
+                    recentUpdatesMap.set(animeId, { groupName, episode, fullTitle });
+                }
+            });
+        }
+
         if (mikanRes && mikanRes.data) {
             const $mikan = cheerio.load(mikanRes.data);
             let currentDayKey = 'unknown';
@@ -91,28 +111,19 @@ async function scrapeAll() {
                         const updateTime = $mikan(li).find('.date-text').text().trim();
                         const count = $mikan(li).find('.num-node').text().trim() || "1";
                         const bangumiId = $mikan(li).find('span.js-expand_bangumi').attr('data-bangumiid');
+                        
+                        // 关联详细的字幕组信息
+                        const detail = recentUpdatesMap.get(bangumiId);
+
                         if (title) {
                             allMikanItems.push({ 
                                 title, img, updateTime, count, id: bangumiId, 
-                                matched: false, originalDay: currentDayKey !== 'unknown' ? currentDayKey : 'recent' 
+                                matched: false, originalDay: currentDayKey !== 'unknown' ? currentDayKey : 'recent',
+                                groupName: detail ? detail.groupName : "字幕组",
+                                episode: detail ? detail.episode : count
                             });
                         }
                     });
-                }
-            });
-        }
-
-        if (mikanClassicRes && mikanClassicRes.data) {
-            const $classic = cheerio.load(mikanClassicRes.data);
-            $classic('.table-striped tbody tr').each((i, el) => {
-                if (i > 100) return; 
-                const id = $classic(el).find('.magnet-link-wrap').first().attr('href')?.split('/').pop();
-                if (id) {
-                    const existing = allMikanItems.find(m => m.id === id);
-                    if (existing) {
-                        existing.hasRecentRelease = true; 
-                        if (!existing.count || existing.count === "") existing.count = "最新";
-                    }
                 }
             });
         }
@@ -215,9 +226,9 @@ async function scrapeAll() {
     }
 }
 
-// Initial scrape and interval every 5 minutes
+// Initial scrape and interval every 3 minutes
 scrapeAll();
-setInterval(scrapeAll, 300000);
+setInterval(scrapeAll, 180000);
 
 app.get('/api/schedule', async (req, res) => {
     const force = req.query.force === 'true';
