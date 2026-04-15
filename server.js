@@ -3,8 +3,15 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -45,14 +52,17 @@ const fuzzyMatch = (str1, str2) => {
 
 let cachedData = null;
 let lastScrapeTime = 0;
+let isScraping = false;
 
 async function scrapeAll() {
+    if (isScraping) return cachedData;
+    isScraping = true;
     try {
         console.log("Starting background scrape...");
         const [anibkRes, mikanRes, mikanClassicRes] = await Promise.all([
             axios.get('https://www.anibk.com/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
-            axios.get('https://mikanime.tv/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
-            axios.get('https://mikanime.tv/Home/Classic', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null)
+            axios.get('https://mikanani.me/', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null),
+            axios.get('https://mikanani.me/Home/Classic', { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(e => null)
         ]);
 
         const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'recent'];
@@ -74,8 +84,10 @@ async function scrapeAll() {
                 } else if ($el.hasClass('an-box')) {
                     $el.find('li').each((j, li) => {
                         const title = $mikan(li).find('a.an-text').attr('title');
-                        let img = $mikan(li).find('span.js-expand_bangumi').attr('data-src');
-                        if (img && !img.startsWith('http')) img = 'https://mikanime.tv' + img;
+                        let img = $mikan(li).find('span.js-expand_bangumi').attr('data-src') || $mikan(li).find('img').attr('src');
+                        if (img && img.startsWith('//')) img = 'https:' + img;
+                        if (img && img.startsWith('/')) img = 'https://mikanani.me' + img;
+                        
                         const updateTime = $mikan(li).find('.date-text').text().trim();
                         const count = $mikan(li).find('.num-node').text().trim() || "1";
                         const bangumiId = $mikan(li).find('span.js-expand_bangumi').attr('data-bangumiid');
@@ -114,11 +126,16 @@ async function scrapeAll() {
                     if (!title) return;
                     let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('data-original') || $anibk(el).find('.char-bk-pic img').attr('src');
                     if (img && img.startsWith('//')) img = 'https:' + img;
+                    
                     const time = $anibk(el).find('.v.fs.tm').text().trim();
                     const ep = $anibk(el).find('.k').last().text().trim();
                     let subtitleUpdates = null;
+                    
                     for (let mItem of allMikanItems) {
                         if (fuzzyMatch(title, mItem.title)) {
+                            // 互补逻辑：如果 AniBK 图片无效，使用 Mikan 的图片
+                            if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
+                            
                             if (mItem.count || mItem.hasRecentRelease) {
                                 subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
                             }
@@ -134,11 +151,16 @@ async function scrapeAll() {
                 if (!title) return; 
                 let img = $anibk(el).find('.char-bk-pic img').attr('data-src') || $anibk(el).find('.char-bk-pic img').attr('data-original') || $anibk(el).find('.char-bk-pic img').attr('src');
                 if (img && img.startsWith('//')) img = 'https:' + img;
+                
                 const time = $anibk(el).find('.fs-italic.fs-gray').text().trim() || '近期上映';
                 const ep = '新上映';
                 let subtitleUpdates = null;
+                
                 for (let mItem of allMikanItems) {
                     if (fuzzyMatch(title, mItem.title)) {
+                        // 互补逻辑
+                        if ((!img || img.includes('placeholder')) && mItem.img) img = mItem.img;
+                        
                         if (mItem.count || mItem.hasRecentRelease) {
                             subtitleUpdates = { updateTime: mItem.updateTime || "最近更新", count: mItem.count || "新", id: mItem.id };
                         }
@@ -159,11 +181,37 @@ async function scrapeAll() {
                 });
             }
         }
+
+        // Compare with old cache to detect updates
+        const updatesFound = [];
+        if (cachedData) {
+            Object.keys(data).forEach(day => {
+                data[day].forEach(item => {
+                    if (item.subtitleUpdates) {
+                        const oldItem = cachedData[day].find(o => o.title === item.title);
+                        if (!oldItem || !oldItem.subtitleUpdates || oldItem.subtitleUpdates.updateTime !== item.subtitleUpdates.updateTime) {
+                            updatesFound.push(item);
+                        }
+                    }
+                });
+            });
+        }
+
         cachedData = data;
         lastScrapeTime = Date.now();
         console.log("Scrape completed successfully.");
+
+        if (updatesFound.length > 0) {
+            console.log(`Found ${updatesFound.length} updates! Emitting to clients...`);
+            io.emit('new_update', updatesFound);
+        }
+
+        return cachedData;
     } catch (e) {
         console.error("Scrape Error:", e.message);
+        return cachedData;
+    } finally {
+        isScraping = false;
     }
 }
 
@@ -172,10 +220,16 @@ scrapeAll();
 setInterval(scrapeAll, 300000);
 
 app.get('/api/schedule', async (req, res) => {
+    const force = req.query.force === 'true';
+    if (force) {
+        console.log("Forced scrape requested via API...");
+        const data = await scrapeAll();
+        return res.json({ success: true, data, lastUpdate: lastScrapeTime, forced: true });
+    }
+
     if (cachedData) {
         res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
     } else {
-        // Fallback for first request if cache empty
         await scrapeAll();
         res.json({ success: true, data: cachedData, lastUpdate: lastScrapeTime });
     }
@@ -211,6 +265,6 @@ app.get('/api/subtitles/:id', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
