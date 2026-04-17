@@ -165,17 +165,37 @@
             previousDataState._currentDay = today;
         }
         async function fetchData(force = false) {
-            const btn = document.getElementById('refreshBtn'); if (force) btn.classList.add('spinning');
+            const btn = document.getElementById('refreshBtn'); 
+            const originalText = btn.innerHTML;
+            if (force) {
+                btn.classList.add('spinning');
+                btn.innerText = '🔄 正在同步...';
+            }
             try {
                 const res = await fetch(`/api/schedule${force ? '?force=true' : ''}`); const result = await res.json();
                 if (result.success) { 
                     const isInitialLoad = !previousDataState;
                     checkForUpdates(result.data); 
                     renderData(result.data); 
-                    if (isInitialLoad) setTimeout(scrollToToday, 800); // 首次加载自动定位到今天
-                    if (result.lastUpdate) document.getElementById('lastSync').innerText = `数据源同步: ${new Date(result.lastUpdate).toLocaleTimeString()}`; 
+                    if (isInitialLoad) setTimeout(scrollToToday, 800); 
+                    
+                    if (result.lastUpdate) {
+                        const lastSyncEl = document.getElementById('lastSync');
+                        lastSyncEl.innerText = `数据源同步: ${new Date(result.lastUpdate).toLocaleTimeString()}`;
+                        if (force) {
+                            lastSyncEl.style.color = '#fff';
+                            setTimeout(() => lastSyncEl.style.color = 'var(--accent-color)', 1000);
+                        }
+                    }
+                    if (force) showNotification("✨ 云端数据已全量同步");
                 }
-            } catch (e) { console.error(e); } finally { btn.classList.remove('spinning'); }
+            } catch (e) { 
+                console.error(e); 
+                if (force) showNotification("❌ 同步失败，请稍后重试");
+            } finally { 
+                btn.classList.remove('spinning'); 
+                btn.innerHTML = originalText;
+            }
         }
         function handleImgError(img) { if (!img) return; img.onerror = null; img.src = 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?q=80&w=500&auto=format&fit=crop'; img.style.filter = 'grayscale(1) opacity(0.3)'; }
         function renderData(data) {
